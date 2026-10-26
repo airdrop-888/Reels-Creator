@@ -193,13 +193,13 @@
     </section>
 
     <section>
-      <label class="toggle">
-        <input type="checkbox" id="autoSend">
-        <span><b>Kirim otomatis setelah disuntik</b><span>(Default OFF — lebih aman, cek dulu teks &amp; attachment di kotak chat)</span></span>
-      </label>
+      <div class="note" style="background:#eef2ff;border-color:#c7d2fe;color:#312e81">
+        <b>⚡ Suntik &amp; Kirim (v2.2.1):</b> klik Suntik langsung isi kotak chat + kirim otomatis (tombol kirim, fallback Enter). Tidak ada lagi mode isi-saja / cek-dulu. Kalau mau balik ke mode cek dulu, bilang aja.
+        <input type="checkbox" id="autoSend" checked hidden>
+      </div>
       <div class="grid2">
         <button class="btn" id="save" type="button">↓ Simpan Antrean</button>
-        <button class="btn primary" id="next" type="button">⚡ Suntik Prompt</button>
+        <button class="btn primary" id="next" type="button">⚡ Suntik &amp; Kirim</button>
       </div>
       <div class="util-row">
         <button class="btn" id="activate" type="button">↻ Aktifkan di tab ini (chat lain)</button>
@@ -255,7 +255,7 @@
     <details>
       <summary><span>ⓘ Panduan Cara Pakai &amp; Catatan Sistem</span><span>▾</span></summary>
       <div class="body">
-        <p><b style="color:#334155">1. Alur kerja:</b> buka tab chat tujuan → simpan antrean prompt di popup ini → klik <b style="color:#4f46e5">Suntik Prompt</b>. Teks akan masuk ke kotak chat. Sejak v1.2.1, suntik juga otomatis menyimpan draf editor bila belum tersimpan.</p>
+        <p><b style="color:#334155">1. Alur kerja:</b> buka tab chat tujuan → simpan antrean prompt di popup ini → klik <b style="color:#4f46e5">Suntik &amp; Kirim</b>. Teks langsung masuk ke kotak chat DAN terkirim otomatis (Enter). Sejak v1.2.1, suntik juga otomatis menyimpan draf editor bila belum tersimpan.</p>
         <p><b style="color:#334155">2. Tab lain:</b> bila memakai website AI berbeda, buka tab tersebut lalu klik <u>Aktifkan di tab ini</u>.</p>
         <p><b style="color:#334155">3. Prompt tersimpan:</b> prompt yang sering dipakai ulang disimpan di pustaka di atas. Klik <b>Muat</b> untuk mengeditnya di editor, atau <b>Pakai</b> untuk langsung menjadikannya antrean.</p>
         <p><b style="color:#334155">4. Auto-batch:</b> atur jeda tenang dan maks tunggu, klik <b style="color:#4f46e5">Mulai auto-batch</b>, lalu biarkan berjalan. Batch dijeda otomatis kalau jawaban belum selesai melewati maks tunggu, atau tombol kirim tidak ketemu — cek chat lalu tekan Lanjut. Satu batch per satu tab, jangan tutup tab selama batch jalan.</p>

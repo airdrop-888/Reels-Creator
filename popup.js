@@ -382,21 +382,22 @@ $('next').addEventListener('click', async () => {
     await chrome.storage.local.set({ queue: draft, index: 0 });
   }
   await chrome.storage.local.set({ autoSend: $('autoSend').checked });
-  let res = await sendToActiveTab({ type: 'rc-inject-next' });
+  // v2.2.1: Suntik dari popup = isi + kirim otomatis (Enter), bukan isi saja.
+  let res = await sendToActiveTab({ type: 'rc-inject-next', forceSend: true, fromManual: true });
   if (!res?.ok) {
     try {
       const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
       if (tab?.id) {
         await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
         await new Promise((r) => setTimeout(r, 400));
-        res = await sendToActiveTab({ type: 'rc-inject-next' });
+        res = await sendToActiveTab({ type: 'rc-inject-next', forceSend: true, fromManual: true });
       }
     } catch (_) { /* pesan gagal di bawah tetap tampil */ }
   }
   await refreshStatus();
   await refreshTarget();
   if (res?.ok) {
-    setMsg(`Prompt ${res.index}/${res.total} disuntik ke chat.${draftChanged ? ' Draf antrean otomatis disimpan dulu.' : ''}`);
+    setMsg(`Prompt ${res.index}/${res.total} disuntik & terkirim otomatis (Enter).${draftChanged ? ' Draf antrean otomatis disimpan dulu.' : ''}`);
   } else {
     setMsg('Gagal menyuntik: pastikan tab aktif adalah halaman chat dan sudah dimuat penuh, lalu coba lagi (atau refresh tab chat sekali).');
   }

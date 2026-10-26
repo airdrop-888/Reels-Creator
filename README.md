@@ -1,6 +1,6 @@
 # 🎬 Reels-Creator
 
-![Version](https://img.shields.io/badge/version-2.2.0-7c5cff)
+![Version](https://img.shields.io/badge/version-2.2.1-7c5cff)
 ![Manifest](https://img.shields.io/badge/manifest-V3-333333)
 ![Browser](https://img.shields.io/badge/browser-Chrome-4285F4)
 ![Privacy](https://img.shields.io/badge/data-tidak%20dikirim%20ke%20server-2ea043)
@@ -82,13 +82,13 @@ Di popup yang sama, klik pilih file pada bagian **Gambar referensi** dan pilih f
 
 Buka chat tujuan di tab lain (misalnya `muse.ai`) dan pastikan halaman sudah termuat penuh.
 
-### 3. Suntik prompt berikutnya
+### 3. Suntik & Kirim
 
-Klik **Suntik prompt berikutnya** — dari popup extension, atau dari panel kecil di pojok kanan bawah halaman chat.
+Klik **Suntik & Kirim** — dari popup extension, atau dari panel kecil di pojok kanan bawah halaman chat. Prompt langsung masuk ke kotak chat DAN terkirim otomatis (klik tombol kirim, fallback tekan Enter bila tombol tidak ketemu). Tidak ada lagi langkah cek-dulu manual.
 
-### 4. Cek, lalu kirim
+### 4. Pantau jawaban
 
-Prompt sudah terisi di kotak chat. Periksa sekilas, lalu tekan **Enter** atau klik tombol kirim seperti biasa.
+Auto-batch menunggu jawaban selesai, menyimpannya, lalu lanjut ke prompt berikutnya. Untuk suntik manual satu per satu, tunggu jawaban selesai dulu sebelum suntik berikutnya agar urutan tidak berantakan.
 
 ### 5. Ulangi untuk prompt berikutnya — atau jalankan auto-batch
 
@@ -191,8 +191,8 @@ Contoh siap pakai tersedia di [`prompts/contoh-prompt-reels.txt`](prompts/contoh
 
 | Mode | Perilaku | Cocok untuk |
 |---|---|---|
-| **Manual (default, disarankan)** | Extension hanya mengisi teks. Pengiriman tetap oleh pengguna. | Produksi harian, prompt panjang, dan sesi yang butuh pengecekan |
-| **Auto-send** | Setelah disuntik, extension mengklik tombol kirim bila tombol ditemukan dan aktif. | Antrean yang sudah final dan teruji |
+| **Suntik & Kirim (v2.2.1, satu-satunya mode)** | Extension mengisi teks lalu langsung mengirim (tombol kirim, fallback Enter). | Produksi harian, antrean yang sudah final |
+| **Mode cek-dulu (dihapus di v2.2.1)** | Dulu: isi saja, kirim manual. Dihapus atas permintaan user — kalau mau dibalikin, minta saja. | — |
 
 Jika tombol kirim tidak ditemukan, teks tetap terisi dan pengguna tinggal mengirim manual — antrean tidak hilang.
 
@@ -258,6 +258,12 @@ Reels-Creator/
 ---
 
 ## 📜 Changelog
+
+### v2.2.1
+
+- **Panel in-page dirapikan**: 1 status saja (sebelumnya teks status tampil 2x karena ditulis ke 2 elemen), header + tombol X sendiri, tombol tersusun baris demi baris (Suntik & Kirim full-width, lalu Auto-batch / Jeda / Berhenti sebaris), lebar 320px — tidak lagi meluber / membungkus aneh.
+- **Suntik = isi + Enter otomatis**: tombol Suntik di popup maupun panel sekarang selalu mengirim (forceSend), bukan isi saja. Jalur kirim: klik tombol kirim → fallback tekan Enter di composer bila tombol tidak ketemu. Toggle cek-dulu di popup dihapus (elemennya disembunyikan agar kode lama tidak error, nilainya selalu ON) — mode cek-dulu bisa dibalikin kalau diminta.
+- Batasan jujur: fallback Enter meniru tombol Enter user; kalau chat memakai Enter untuk baris baru (bukan kirim), prompt bisa gagal terkirim dan tetap terlihat di kotak — dalam hal itu kirim manual sekali, lalu laporkan layout chatnya.
 
 ### v2.2.0
 

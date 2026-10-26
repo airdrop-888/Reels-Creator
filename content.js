@@ -194,10 +194,24 @@
   }
 
   function setStatus(msg) {
+    // v2.2.1: SATU status saja. Sebelumnya setStatus menulis ke rc-status
+    // DAN rc-batch-status sehingga teks yang sama tampil 2x di panel.
     const el = document.getElementById('rc-status');
     if (el) el.textContent = msg;
-    const batchEl = document.getElementById('rc-batch-status');
-    if (batchEl) batchEl.textContent = msg;
+  }
+
+  function pressEnter(composer) {
+    // Fallback kirim: tekan Enter di composer bila tombol kirim tidak ketemu.
+    // Banyak chat AI mengirim dengan Enter (tanpa Shift), jadi ini meniru
+    // persis apa yang user lakukan manual.
+    try {
+      composer.focus();
+      const opts = { key: 'Enter', code: 'Enter', keyCode: 13, which: 13, bubbles: true, cancelable: true };
+      composer.dispatchEvent(new KeyboardEvent('keydown', opts));
+      composer.dispatchEvent(new KeyboardEvent('keypress', opts));
+      composer.dispatchEvent(new KeyboardEvent('keyup', opts));
+      return true;
+    } catch (_) { return false; }
   }
 
   function saveBatchState() {
@@ -299,15 +313,22 @@
       }
     }
     setStatus(status);
-    if (state.autoSend || opts.forceSend) {
+    // v2.2.1: Suntik = isi + kirim otomatis (Enter). Dipakai popup, panel,
+    // dan auto-batch — tidak lagi ada mode "isi saja, cek dulu, kirim manual".
+    // forceSend selalu true dari pemanggil manual; autoSend lama tetap
+    // dihormati sebagai cadangan bila ada pemanggil lama tanpa forceSend.
+    if (state.autoSend || opts.forceSend || opts.fromManual) {
       await sleep(state.refImages.length ? 1400 : 800);
       const btn = findSendButton(composer);
       if (btn && !btn.disabled) {
         btn.click();
         sent = true;
         setStatus(`Prompt ${state.index + 1} terkirim otomatis. Sisa: ${left}.`);
+      } else if (pressEnter(composer)) {
+        sent = true;
+        setStatus(`Prompt ${state.index + 1} terkirim otomatis via Enter (tombol kirim tidak ketemu). Sisa: ${left}.`);
       } else {
-        setStatus(`Prompt ${state.index + 1} sudah masuk, tapi tombol kirim tidak ketemu — tekan Enter / kirim manual.`);
+        setStatus(`Prompt ${state.index + 1} sudah masuk, tapi gagal dikirim otomatis — tekan Enter / kirim manual.`);
       }
     }
     return { ok: true, sent, index: state.index + 1, total: state.queue.length };
@@ -493,32 +514,38 @@
   }
 
   function buildPanel() {
+    // v2.2.1: panel dirapikan — 1 status saja (tidak ganda lagi), header
+    // sendiri, tombol tersusun baris demi baris, tidak meluber / membungkus
+    // aneh seperti di screenshot. Tombol utama: Suntik & Kirim (isi + Enter).
     if (document.getElementById(PANEL_ID)) return;
     const box = document.createElement('div');
     box.id = PANEL_ID;
     box.innerHTML = `
-      <div style="font-weight:700;margin-bottom:6px">🎬 Reels-Creator</div>
-      <div id="rc-status" style="font-size:12px;line-height:1.4;margin-bottom:8px">Siap. Buka popup extension untuk isi antrean prompt.</div>
-      <div id="rc-batch-status" style="font-size:12px;line-height:1.4;margin-bottom:8px;color:#c7d2fe"></div>
-      <button id="rc-next" style="flex:1">Suntik prompt berikutnya</button>
-      <button id="rc-hide" title="Sembunyikan panel (muncul lagi setelah refresh)">✕</button>
-      <button id="rc-batch" style="flex:1">▶ Auto-batch</button>
-      <button id="rc-batch-toggle">⏸ Jeda</button>
-      <button id="rc-batch-stop">⏹ Berhenti</button>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+        <span style="font-weight:700;font-size:13px">🎬 Reels-Creator</span>
+        <button id="rc-hide" title="Sembunyikan panel (muncul lagi setelah refresh)" style="width:24px;height:24px;padding:0">✕</button>
+      </div>
+      <div id="rc-status" style="font-size:12px;line-height:1.5;background:rgba(255,255,255,.08);border-radius:8px;padding:8px 10px;margin-bottom:10px">Siap. Buka popup extension untuk isi antrean prompt.</div>
+      <button id="rc-next" style="width:100%;margin-bottom:8px">⚡ Suntik &amp; Kirim</button>
+      <div style="display:flex;gap:6px">
+        <button id="rc-batch" style="flex:1">▶ Auto-batch</button>
+        <button id="rc-batch-toggle" style="flex:1">⏸ Jeda</button>
+        <button id="rc-batch-stop" style="flex:1">⏹ Berhenti</button>
+      </div>
     `;
     Object.assign(box.style, {
       position: 'fixed', right: '16px', bottom: '16px', zIndex: '2147483647',
-      width: '300px', padding: '12px', borderRadius: '12px', fontFamily: 'system-ui, sans-serif',
-      fontSize: '13px', color: '#fff', background: 'rgba(20,20,30,.92)',
-      boxShadow: '0 8px 30px rgba(0,0,0,.35)', display: 'flex', flexWrap: 'wrap', gap: '6px',
+      width: '320px', padding: '14px', borderRadius: '14px', fontFamily: 'system-ui, sans-serif',
+      fontSize: '13px', color: '#fff', background: 'rgba(20,20,30,.94)',
+      boxShadow: '0 8px 30px rgba(0,0,0,.35)',
     });
     box.querySelectorAll('button').forEach((b) => {
-      b.style.cssText += 'border:0;border-radius:8px;padding:8px 10px;cursor:pointer;background:#7c5cff;color:#fff;font-weight:600';
+      b.style.cssText += 'border:0;border-radius:9px;padding:9px 8px;cursor:pointer;background:#7c5cff;color:#fff;font-weight:600;font-size:12px;white-space:nowrap';
     });
-    box.querySelector('#rc-hide').style.cssText += 'flex:0 0 auto;background:#444';
+    box.querySelector('#rc-hide').style.cssText += 'background:#444;font-size:12px';
     box.querySelector('#rc-batch-toggle').style.cssText += 'background:#475569';
     box.querySelector('#rc-batch-stop').style.cssText += 'background:#dc2626';
-    box.querySelector('#rc-next').addEventListener('click', () => injectNext());
+    box.querySelector('#rc-next').addEventListener('click', () => injectNext({ forceSend: true, fromManual: true }));
     box.querySelector('#rc-hide').addEventListener('click', () => box.remove());
     box.querySelector('#rc-batch').addEventListener('click', () => {
       chrome.storage.local.get({ batchQuietSec: 8, batchMaxWaitMin: 5 }).then((s) => {
@@ -535,7 +562,7 @@
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.type === 'rc-ping') sendResponse({ ok: true });
-    else if (msg?.type === 'rc-inject-next') injectNext().then(sendResponse);
+    else if (msg?.type === 'rc-inject-next') injectNext({ forceSend: !!msg.forceSend, fromManual: !!msg.fromManual }).then(sendResponse);
     else if (msg?.type === 'rc-batch-start') startBatch(msg.settings).then(sendResponse);
     else if (msg?.type === 'rc-batch-pause') sendResponse(pauseBatch());
     else if (msg?.type === 'rc-batch-resume') sendResponse(resumeBatch());
