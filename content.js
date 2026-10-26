@@ -1,4 +1,4 @@
-// Reels-Creator v1.2 — content script untuk chat AI (utama muse.ai,
+// Reels-Creator v2.1 — content script untuk chat AI (utama muse.ai,
 // juga chat lain yang diaktifkan lewat popup). Guard ganda supaya injeksi
 // on-demand tidak membuat panel/listener dobel.
 //
@@ -9,10 +9,30 @@
 //  2) kalau belum ada input file, klik tombol lampiran (📎/+) lalu ulangi;
 //  3) kalau tetap tidak ada, salin 1 gambar pertama ke clipboard — user
 //     tinggal Ctrl+V di kotak chat. Status selalu jujur soal metode yang jalan.
+//
+// Auto-batch (v2.1): kirim antrean satu per satu TANPA klik per prompt.
+// Setelah tiap prompt terkirim, mesin menunggu jawaban selesai dengan
+// heuristik generik (bukan API resmi chat, jadi tidak 100% pasti):
+//  - tidak ada lagi tombol Stop/Berhenti yang terlihat, DAN
+//  - isi halaman tidak berubah selama `quietSec` detik berturut-turut.
+// Kalau waktu tunggu maksimum lewat, batch DIJEDA (bukan dilanjut buta),
+// supaya tidak mengirim prompt berikutnya di tengah jawaban yang masih jalan.
+// Jeda/berhenti hanya berlaku di antara prompt; kalau dijeda di tengah
+// jawaban, pastikan jawaban selesai dulu sebelum menekan Lanjut.
+// Satu batch per satu tab saja. Tab jangan ditutup selama batch jalan;
+// tab yang tidak aktif bisa membuat timer Chrome melambat.
 (() => {
   if (window.__reelsCreatorLoaded) return;
   window.__reelsCreatorLoaded = true;
   const PANEL_ID = 'reels-creator-panel';
+  const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+  // --- State auto-batch (per tab, in-memory; ringkasannya juga disimpan) ---
+  let batchRunning = false;
+  let batchPaused = false;
+  let batchStopRequested = false;
+  let batchMode = 'idle'; // idle | running | paused | stopped | done | error
+  let batchSettings = { quietSec: 8, maxWaitSec: 300 };
 
   function isVisible(el) {
     if (!el) return false;
@@ -94,6 +114,14 @@
   function setStatus(msg) {
     const el = document.getElementById('rc-status');
     if (el) el.textContent = msg;
+    const batchEl = document.getElementById('rc-batch-status');
+    if (batchEl) batchEl.textContent = msg;
+  }
+
+  function saveBatchState() {
+    try {
+      chrome.storage.local.set({ batch: { mode: batchMode, running: batchRunning, paused: batchPaused, updatedAt: Date.now() } });
+    } catch (_) { /* status panel tetap jalan walau storage gagal */ }
   }
 
   async function dataUrlToFile(img) {
@@ -103,8 +131,6 @@
   }
 
   function findFileInputs() {
-    // Input file chat sering disembunyikan (display:none) tapi tetap bisa
-    // diisi lewat JS, jadi jangan difilter pakai isVisible.
     return [...document.querySelectorAll('input[type="file"]')].filter((el) => {
       const accept = (el.getAttribute('accept') || '').toLowerCase();
       return !accept || /image|\.jpg|\.jpeg|\.png|\.webp|\*/.test(accept);
@@ -125,7 +151,7 @@
       const btn = findAttachButton();
       if (btn) {
         btn.click();
-        await new Promise((r) => setTimeout(r, 700));
+        await sleep(700);
         inputs = findFileInputs();
       }
     }
@@ -147,10 +173,8 @@
       const viaInput = await attachViaFileInput(files);
       if (viaInput) return viaInput;
     } catch (e) {
-      // Jatuh ke clipboard di bawah; jangan gagalkan suntikan teks.
       console.warn('[Reels-Creator] attach via file input gagal:', e);
     }
-    // Fallback: clipboard (1 gambar). Butuh fokus ke composer dulu.
     try {
       if (navigator.clipboard && window.ClipboardItem && composer) {
         composer.focus();
@@ -164,7 +188,7 @@
     return { method: 'none', count: 0, total: refImages.length };
   }
 
-  async function injectNext() {
+  async function injectNext(opts = {}) {
     const state = await getState();
     if (state.index >= state.queue.length) {
       setStatus('Antrean habis. Tambah prompt lewat popup extension.');
@@ -181,6 +205,7 @@
     await chrome.storage.local.set({ index: state.index + 1 });
     const left = state.queue.length - (state.index + 1);
     let status = `Prompt ${state.index + 1}/${state.queue.length} sudah masuk. Sisa: ${left}.`;
+    let sent = false;
     if (state.refImages.length) {
       const attached = await attachRefImages(state.refImages, composer);
       if (attached?.method === 'file-input') {
@@ -192,17 +217,182 @@
       }
     }
     setStatus(status);
-    if (state.autoSend) {
-      await new Promise((r) => setTimeout(r, state.refImages.length ? 1400 : 800));
+    if (state.autoSend || opts.forceSend) {
+      await sleep(state.refImages.length ? 1400 : 800);
       const btn = findSendButton(composer);
       if (btn && !btn.disabled) {
         btn.click();
+        sent = true;
         setStatus(`Prompt ${state.index + 1} terkirim otomatis. Sisa: ${left}.`);
       } else {
         setStatus(`Prompt ${state.index + 1} sudah masuk, tapi tombol kirim tidak ketemu — tekan Enter / kirim manual.`);
       }
     }
-    return { ok: true, index: state.index + 1, total: state.queue.length };
+    return { ok: true, sent, index: state.index + 1, total: state.queue.length };
+  }
+
+  // --- Auto-batch ---
+  function isGenerating() {
+    // Tombol Stop adalah sinyal paling jelas di hampir semua chat AI.
+    // Sengaja tidak memakai "tombol kirim disabled" sebagai sinyal, karena
+    // setelah terkirim pun tombol kirim biasanya disabled saat kotak kosong.
+    return [...document.querySelectorAll('button')].filter(isVisible).some((b) => {
+      const hay = `${b.getAttribute('aria-label') || ''} ${b.title || ''} ${b.textContent || ''}`.toLowerCase();
+      return /stop generating|stop response|berhenti|membatalkan/.test(hay);
+    });
+  }
+
+  async function waitForAnswer() {
+    const intervalMs = 2000;
+    const quietNeeded = Math.max(1, Math.round((batchSettings.quietSec * 1000) / intervalMs));
+    // Masa tenggang: jawaban butuh waktu mulai, jangan langsung dianggap selesai.
+    for (let t = 0; t < 5000; t += 1000) {
+      if (batchStopRequested) return { done: false, reason: 'stopped' };
+      if (batchPaused) return { done: false, reason: 'paused' };
+      await sleep(1000);
+    }
+    let lastLen = document.body ? document.body.innerText.length : 0;
+    let quietTicks = 0;
+    let elapsed = 0;
+    while (elapsed < batchSettings.maxWaitSec * 1000) {
+      if (batchStopRequested) return { done: false, reason: 'stopped' };
+      if (batchPaused) return { done: false, reason: 'paused' };
+      await sleep(intervalMs);
+      elapsed += intervalMs;
+      if (batchStopRequested) return { done: false, reason: 'stopped' };
+      if (batchPaused) return { done: false, reason: 'paused' };
+      const curLen = document.body ? document.body.innerText.length : 0;
+      if (!isGenerating() && curLen === lastLen) quietTicks += 1;
+      else quietTicks = 0;
+      lastLen = curLen;
+      if (quietTicks >= quietNeeded) return { done: true };
+    }
+    return { done: false, reason: 'timeout' };
+  }
+
+  function batchStatus() {
+    return { ok: true, running: batchRunning, paused: batchPaused, mode: batchMode, settings: batchSettings };
+  }
+
+  async function runBatchLoop() {
+    while (batchRunning) {
+      if (batchStopRequested) break;
+      if (batchPaused) break;
+      const state = await getState();
+      if (state.index >= state.queue.length) break;
+      const composer = findComposer();
+      if (!composer) {
+        batchMode = 'error';
+        setStatus('Auto-batch berhenti: kotak chat tidak ketemu. Refresh halaman chat lalu mulai lagi.');
+        break;
+      }
+      setStatus(`Auto-batch: mengirim prompt ${state.index + 1}/${state.queue.length}…`);
+      const res = await injectNext({ forceSend: true });
+      if (!res.ok) {
+        batchMode = 'error';
+        setStatus(`Auto-batch berhenti: ${res.reason || 'gagal menyuntik'}. Perbaiki lalu mulai lagi dari prompt berikutnya.`);
+        break;
+      }
+      if (!res.sent) {
+        batchMode = 'paused';
+        batchPaused = true;
+        setStatus('Auto-batch dijeda: prompt sudah masuk tapi tombol kirim tidak ketemu. Kirim manual, pastikan jawaban selesai, lalu tekan Lanjut.');
+        break;
+      }
+      setStatus(`Auto-batch: menunggu jawaban prompt ${res.index}/${res.total} selesai…`);
+      const wait = await waitForAnswer();
+      if (wait.reason === 'paused') {
+        batchMode = 'paused';
+        setStatus('Auto-batch dijeda. Pastikan jawaban selesai dulu sebelum menekan Lanjut.');
+        break;
+      }
+      if (wait.reason === 'stopped') break;
+      if (wait.reason === 'timeout') {
+        batchMode = 'paused';
+        batchPaused = true;
+        setStatus(`Auto-batch dijeda: jawaban prompt ${res.index} belum selesai setelah ${batchSettings.maxWaitSec} detik. Cek chat, tunggu selesai, lalu tekan Lanjut.`);
+        break;
+      }
+      await sleep(1500);
+    }
+    const wasStopped = batchStopRequested;
+    batchRunning = false;
+    if (wasStopped) {
+      batchMode = 'stopped';
+      batchPaused = false;
+      setStatus('Auto-batch dihentikan. Antrean berhenti di prompt berikutnya — bisa dilanjut manual atau mulai batch lagi.');
+    } else if (batchMode === 'running') {
+      // Keluar loop karena antrean habis (bukan pause/stop/error).
+      const state = await getState();
+      if (state.index >= state.queue.length) {
+        batchMode = 'done';
+        setStatus(`Auto-batch selesai. Semua ${state.queue.length} prompt terkirim.`);
+      }
+    }
+    batchStopRequested = false;
+    saveBatchState();
+  }
+
+  function startBatch(settings) {
+    if (batchRunning) return { ok: false, reason: 'already-running', ...batchStatus() };
+    if (settings) {
+      if (Number.isFinite(settings.quietSec)) batchSettings.quietSec = Math.min(60, Math.max(3, settings.quietSec));
+      if (Number.isFinite(settings.maxWaitSec)) batchSettings.maxWaitSec = Math.min(1800, Math.max(60, settings.maxWaitSec));
+    }
+    return getState().then((state) => {
+      if (state.index >= state.queue.length) {
+        return { ok: false, reason: 'empty', ...batchStatus() };
+      }
+      batchRunning = true;
+      batchPaused = false;
+      batchStopRequested = false;
+      batchMode = 'running';
+      saveBatchState();
+      setStatus(`Auto-batch dimulai dari prompt ${state.index + 1}/${state.queue.length}. Jangan tutup tab ini.`);
+      runBatchLoop();
+      return { ok: true, ...batchStatus() };
+    });
+  }
+
+  function pauseBatch() {
+    if (batchRunning) {
+      batchPaused = true;
+      batchMode = 'paused';
+      saveBatchState();
+      return { ok: true, ...batchStatus() };
+    }
+    return { ok: false, reason: 'not-running', ...batchStatus() };
+  }
+
+  function resumeBatch() {
+    if (batchRunning) return { ok: false, reason: 'already-running', ...batchStatus() };
+    if (batchMode !== 'paused') return { ok: false, reason: 'not-paused', ...batchStatus() };
+    batchRunning = true;
+    batchPaused = false;
+    batchStopRequested = false;
+    batchMode = 'running';
+    saveBatchState();
+    setStatus('Auto-batch dilanjutkan dari prompt berikutnya.');
+    runBatchLoop();
+    return { ok: true, ...batchStatus() };
+  }
+
+  function toggleBatch() {
+    if (batchRunning) return pauseBatch();
+    if (batchMode === 'paused') return resumeBatch();
+    return { ok: false, reason: 'not-running', ...batchStatus() };
+  }
+
+  function stopBatch() {
+    if (!batchRunning && batchMode !== 'paused') {
+      batchMode = 'stopped';
+      saveBatchState();
+      return { ok: true, ...batchStatus() };
+    }
+    batchStopRequested = true;
+    batchPaused = false;
+    setStatus('Auto-batch dihentikan…');
+    return { ok: true, ...batchStatus() };
   }
 
   function buildPanel() {
@@ -212,12 +402,16 @@
     box.innerHTML = `
       <div style="font-weight:700;margin-bottom:6px">🎬 Reels-Creator</div>
       <div id="rc-status" style="font-size:12px;line-height:1.4;margin-bottom:8px">Siap. Buka popup extension untuk isi antrean prompt.</div>
+      <div id="rc-batch-status" style="font-size:12px;line-height:1.4;margin-bottom:8px;color:#c7d2fe"></div>
       <button id="rc-next" style="flex:1">Suntik prompt berikutnya</button>
       <button id="rc-hide" title="Sembunyikan panel (muncul lagi setelah refresh)">✕</button>
+      <button id="rc-batch" style="flex:1">▶ Auto-batch</button>
+      <button id="rc-batch-toggle">⏸ Jeda</button>
+      <button id="rc-batch-stop">⏹ Berhenti</button>
     `;
     Object.assign(box.style, {
       position: 'fixed', right: '16px', bottom: '16px', zIndex: '2147483647',
-      width: '280px', padding: '12px', borderRadius: '12px', fontFamily: 'system-ui, sans-serif',
+      width: '300px', padding: '12px', borderRadius: '12px', fontFamily: 'system-ui, sans-serif',
       fontSize: '13px', color: '#fff', background: 'rgba(20,20,30,.92)',
       boxShadow: '0 8px 30px rgba(0,0,0,.35)', display: 'flex', flexWrap: 'wrap', gap: '6px',
     });
@@ -225,14 +419,32 @@
       b.style.cssText += 'border:0;border-radius:8px;padding:8px 10px;cursor:pointer;background:#7c5cff;color:#fff;font-weight:600';
     });
     box.querySelector('#rc-hide').style.cssText += 'flex:0 0 auto;background:#444';
-    box.querySelector('#rc-next').addEventListener('click', injectNext);
+    box.querySelector('#rc-batch-toggle').style.cssText += 'background:#475569';
+    box.querySelector('#rc-batch-stop').style.cssText += 'background:#dc2626';
+    box.querySelector('#rc-next').addEventListener('click', () => injectNext());
     box.querySelector('#rc-hide').addEventListener('click', () => box.remove());
+    box.querySelector('#rc-batch').addEventListener('click', () => {
+      chrome.storage.local.get({ batchQuietSec: 8, batchMaxWaitMin: 5 }).then((s) => {
+        startBatch({ quietSec: s.batchQuietSec, maxWaitSec: s.batchMaxWaitMin * 60 });
+      });
+    });
+    box.querySelector('#rc-batch-toggle').addEventListener('click', (e) => {
+      const r = toggleBatch();
+      e.target.textContent = r.paused ? '▶ Lanjut' : '⏸ Jeda';
+    });
+    box.querySelector('#rc-batch-stop').addEventListener('click', () => stopBatch());
     document.body.appendChild(box);
   }
 
   chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
     if (msg?.type === 'rc-ping') sendResponse({ ok: true });
-    if (msg?.type === 'rc-inject-next') injectNext().then(sendResponse);
+    else if (msg?.type === 'rc-inject-next') injectNext().then(sendResponse);
+    else if (msg?.type === 'rc-batch-start') startBatch(msg.settings).then(sendResponse);
+    else if (msg?.type === 'rc-batch-pause') sendResponse(pauseBatch());
+    else if (msg?.type === 'rc-batch-resume') sendResponse(resumeBatch());
+    else if (msg?.type === 'rc-batch-toggle') sendResponse(toggleBatch());
+    else if (msg?.type === 'rc-batch-stop') sendResponse(stopBatch());
+    else if (msg?.type === 'rc-batch-status') sendResponse(batchStatus());
     return true;
   });
 

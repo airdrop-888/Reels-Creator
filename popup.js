@@ -356,6 +356,69 @@ $('clearRefs').addEventListener('click', async () => {
   setMsg('Gambar referensi dihapus.');
 });
 
+// --- Auto-batch ---
+async function refreshBatchStatus() {
+  const res = await sendToActiveTab({ type: 'rc-batch-status' });
+  const s = await chrome.storage.local.get({ queue: [], index: 0 });
+  if (!res?.ok) {
+    $('batchStatus').textContent = 'Auto-batch: belum aktif di tab ini (klik Aktifkan di tab ini / mulai dari panel chat).';
+    $('batchPauseBtn').textContent = '⏸ Jeda / Lanjut';
+    return;
+  }
+  const modeText = { idle: 'belum berjalan', running: 'BERJALAN', paused: 'DIJEDA', stopped: 'dihentikan', done: 'selesai', error: 'berhenti karena error' }[res.mode] || res.mode;
+  $('batchStatus').textContent = `Auto-batch: ${modeText} — prompt ${Math.min(s.index, s.queue.length)}/${s.queue.length}. Jeda tenang ${res.settings?.quietSec ?? 8} dtk, maks tunggu ${Math.round((res.settings?.maxWaitSec ?? 300) / 60)} mnt.`;
+  $('batchPauseBtn').textContent = res.paused ? '▶ Lanjut batch' : '⏸ Jeda batch';
+}
+
+async function sendBatchWithActivate(message) {
+  let res = await sendToActiveTab(message);
+  if (!res?.ok) {
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+        await new Promise((r) => setTimeout(r, 400));
+        res = await sendToActiveTab(message);
+      }
+    } catch (_) { /* pesan gagal di bawah tetap tampil */ }
+  }
+  return res;
+}
+
+$('batchStart').addEventListener('click', async () => {
+  const quietSec = Math.min(60, Math.max(3, parseInt($('batchQuietSec').value, 10) || 8));
+  const maxWaitMin = Math.min(30, Math.max(1, parseInt($('batchMaxWaitMin').value, 10) || 5));
+  $('batchQuietSec').value = quietSec;
+  $('batchMaxWaitMin').value = maxWaitMin;
+  await chrome.storage.local.set({ batchQuietSec: quietSec, batchMaxWaitMin: maxWaitMin });
+  const res = await sendBatchWithActivate({ type: 'rc-batch-start', settings: { quietSec, maxWaitSec: maxWaitMin * 60 } });
+  await refreshStatus();
+  await refreshBatchStatus();
+  if (!res?.ok) {
+    setMsg(res?.reason === 'empty'
+      ? 'Auto-batch gagal dimulai: antrean habis — simpan antrean baru dulu.'
+      : res?.reason === 'already-running'
+        ? 'Auto-batch sudah berjalan di tab ini.'
+        : 'Auto-batch gagal dimulai: pastikan tab aktif adalah halaman chat dan sudah dimuat penuh.');
+  } else {
+    setMsg('Auto-batch dimulai. Jangan tutup tab chat — pantau dari panel di halaman chat, atau buka popup ini lagi untuk Jeda / Berhenti.');
+  }
+});
+
+$('batchPauseBtn').addEventListener('click', async () => {
+  const res = await sendBatchWithActivate({ type: 'rc-batch-toggle' });
+  await refreshBatchStatus();
+  if (!res?.ok) setMsg('Tidak ada auto-batch yang bisa dijeda / dilanjutkan di tab ini.');
+  else setMsg(res.paused ? 'Auto-batch dijeda.' : 'Auto-batch dilanjutkan.');
+});
+
+$('batchStop').addEventListener('click', async () => {
+  const res = await sendToActiveTab({ type: 'rc-batch-stop' });
+  await refreshBatchStatus();
+  if (!res?.ok) setMsg('Tidak ada auto-batch yang berjalan di tab ini.');
+  else setMsg('Auto-batch dihentikan.');
+});
+
 // --- Init ---
 $('versionBadge').innerHTML = `<span class="dot"></span> v${chrome.runtime.getManifest().version}`;
 chrome.storage.local.get({ queue: [] }).then((s) => {
@@ -364,5 +427,10 @@ chrome.storage.local.get({ queue: [] }).then((s) => {
   refreshRefGrid();
   refreshSavedList();
   refreshTarget();
+  refreshBatchStatus();
+  chrome.storage.local.get({ batchQuietSec: 8, batchMaxWaitMin: 5 }).then((b) => {
+    $('batchQuietSec').value = b.batchQuietSec;
+    $('batchMaxWaitMin').value = b.batchMaxWaitMin;
+  });
   if (!s.queue.length) setMsg('Tempel prompt di editor, atau muat prompt tersimpan dari pustaka.');
 });

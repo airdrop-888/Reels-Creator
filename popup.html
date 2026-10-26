@@ -67,6 +67,9 @@
   .ref-add{aspect-ratio:1;border:2px dashed #e2e8f0;border-radius:10px;background:#fff;color:#94a3b8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:16px;font-weight:600}
   .ref-add:hover{border-color:#818cf8;color:#4f46e5;background:#eef2ff}
   .ref-add span{font-size:9px;font-weight:600}
+  /* Auto-batch */
+  .batch-box{background:#eef2ff;border:1px solid #c7d2fe;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .num-input{width:72px;border:1px solid #c7d2fe;border-radius:8px;padding:6px 8px;font-size:12px;outline:0;background:#fff}
   /* Toggle & aksi */
   .toggle{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
   .toggle input{margin-top:2px;accent-color:#4f46e5;width:16px;height:16px}
@@ -186,6 +189,25 @@
     </section>
 
     <section>
+      <div class="batch-box">
+        <div class="row"><span class="label">🤖 Auto-batch — kirim antrean otomatis</span></div>
+        <p class="hint">Kirim prompt 1, tunggu jawaban selesai, lalu kirim prompt berikutnya sendiri sampai antrean habis. Jangan tutup tab chat selama batch jalan.</p>
+        <div class="row" style="justify-content:flex-start;gap:16px">
+          <label style="font-size:11px">Jeda tenang (detik) <input class="num-input" id="batchQuietSec" type="number" min="3" max="60" value="8"></label>
+          <label style="font-size:11px">Maks tunggu / prompt (menit) <input class="num-input" id="batchMaxWaitMin" type="number" min="1" max="30" value="5"></label>
+        </div>
+        <div class="grid2">
+          <button class="btn primary" id="batchStart" type="button">▶ Mulai auto-batch</button>
+          <button class="btn" id="batchStop" type="button">⏹ Berhenti</button>
+        </div>
+        <div class="util-row">
+          <button class="btn" id="batchPauseBtn" type="button">⏸ Jeda / Lanjut</button>
+        </div>
+        <div id="batchStatus" style="font-size:11px;color:#4338ca;line-height:1.5">Auto-batch belum berjalan.</div>
+      </div>
+    </section>
+
+    <section>
       <div class="telemetry">
         <div class="row"><span style="font-size:12px;font-weight:600;color:#334155">Status Antrean Real-time</span><span id="queueProgressText" style="font-size:12px;font-weight:700;color:#4f46e5">0 / 0</span></div>
         <div class="bar"><i id="progressBar" style="width:0%"></i></div>
@@ -205,6 +227,7 @@
         <p><b style="color:#334155">1. Alur kerja:</b> buka tab chat tujuan → simpan antrean prompt di popup ini → klik <b style="color:#4f46e5">Suntik Prompt</b>. Teks akan masuk ke kotak chat. Sejak v1.2.1, suntik juga otomatis menyimpan draf editor bila belum tersimpan.</p>
         <p><b style="color:#334155">2. Tab lain:</b> bila memakai website AI berbeda, buka tab tersebut lalu klik <u>Aktifkan di tab ini</u>.</p>
         <p><b style="color:#334155">3. Prompt tersimpan:</b> prompt yang sering dipakai ulang disimpan di pustaka di atas. Klik <b>Muat</b> untuk mengeditnya di editor, atau <b>Pakai</b> untuk langsung menjadikannya antrean.</p>
+        <p><b style="color:#334155">4. Auto-batch:</b> atur jeda tenang dan maks tunggu, klik <b style="color:#4f46e5">Mulai auto-batch</b>, lalu biarkan berjalan. Batch dijeda otomatis kalau jawaban belum selesai melewati maks tunggu, atau tombol kirim tidak ketemu — cek chat lalu tekan Lanjut. Satu batch per satu tab, jangan tutup tab selama batch jalan.</p>
         <div class="note"><b>Catatan media:</b> dialog file browser OS tidak dapat dipaksa otomatis oleh extension. Extension akan mencoba upload via input file, atau otomatis menyalin gambar ke clipboard (cukup tekan <kbd>Ctrl+V</kbd> pada kotak chat).</div>
       </div>
     </details>

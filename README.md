@@ -1,6 +1,6 @@
 # 🎬 Reels-Creator
 
-![Version](https://img.shields.io/badge/version-2.0.0-7c5cff)
+![Version](https://img.shields.io/badge/version-2.1.0-7c5cff)
 ![Manifest](https://img.shields.io/badge/manifest-V3-333333)
 ![Browser](https://img.shields.io/badge/browser-Chrome-4285F4)
 ![Privacy](https://img.shields.io/badge/data-tidak%20dikirim%20ke%20server-2ea043)
@@ -16,6 +16,7 @@ Tempel antrean prompt sekali, lalu kirim satu per satu ke chat Muse, ChatGPT, Cl
 | Fitur | Keterangan |
 |---|---|
 | 📋 Antrean prompt | Simpan banyak prompt sekaligus, disuntik satu per satu sesuai urutan |
+| 🤖 Auto-batch | Kirim antrean otomatis: tunggu jawaban selesai, lalu kirim prompt berikutnya sendiri |
 | 💾 Prompt tersimpan | Simpan prompt ke pustaka lokal, pakai ulang kapan pun untuk video serupa |
 | 🖼️ Gambar referensi | Lampirkan `.jpg` / `.png` bersama prompt — karakter, gaya visual, atau produk acuan |
 | 🎯 Suntik otomatis | Prompt masuk langsung ke kotak chat, tanpa mengetik ulang |
@@ -76,9 +77,28 @@ Klik **Suntik prompt berikutnya** — dari popup extension, atau dari panel keci
 
 Prompt sudah terisi di kotak chat. Periksa sekilas, lalu tekan **Enter** atau klik tombol kirim seperti biasa.
 
-### 5. Ulangi untuk prompt berikutnya
+### 5. Ulangi untuk prompt berikutnya — atau jalankan auto-batch
 
-Tunggu jawaban chat selesai, baru suntik prompt berikutnya. Satu antrean bisa dipakai untuk satu sesi produksi penuh.
+Manual: tunggu jawaban chat selesai, baru suntik prompt berikutnya. Satu antrean bisa dipakai untuk satu sesi produksi penuh.
+
+Auto-batch: atur **Jeda tenang** dan **Maks tunggu per prompt** di popup (atau langsung dari panel di halaman chat), lalu klik **Mulai auto-batch**. Extension akan mengirim prompt 1, menunggu jawaban selesai, lalu mengirim prompt berikutnya sendiri sampai antrean habis. Tombol **Jeda / Lanjut** dan **Berhenti** tersedia di popup maupun panel.
+
+---
+
+## 🤖 Auto-batch — Cara Kerja & Batasan Jujur
+
+**Deteksi jawaban selesai (heuristik generik, bukan API resmi chat):**
+
+1. Tidak ada lagi tombol Stop / Berhenti yang terlihat di halaman chat, DAN
+2. Isi halaman tidak berubah selama jeda tenang yang diatur (default 8 detik).
+
+**Pengaman yang sengaja dibuat:**
+
+- Kalau jawaban belum selesai melewati maks tunggu (default 5 menit per prompt), batch **dijeda, bukan dilanjut buta** — cek chat, tunggu selesai, lalu tekan Lanjut.
+- Kalau prompt sudah masuk tapi tombol kirim tidak ketemu, batch juga dijeda — kirim manual, lalu Lanjut.
+- Jeda / Berhenti berlaku di antara prompt. Kalau dijeda di tengah jawaban, pastikan jawaban selesai dulu sebelum Lanjut.
+- Jalankan **satu batch per satu tab**. Jangan tutup tab selama batch jalan — tab yang tidak aktif bisa membuat timer Chrome melambat sehingga deteksi jawaban ikut melambat.
+- Deteksi ini heuristik lintas chat (Muse, ChatGPT, Claude, Gemini, dll), bukan deteksi resmi per platform, jadi tidak 100% pasti di semua layout chat. Untuk batch pertama, coba dulu dengan antrean kecil (2–3 prompt) sambil dipantau, sebelum ditinggal jalan untuk antrean besar.
 
 ---
 
@@ -200,6 +220,8 @@ Reels-Creator/
 | Teks tidak masuk ke kotak chat | Pastikan halaman chat termuat penuh, lalu coba suntik sekali lagi |
 | Gambar referensi tidak terlampir | Cek status di panel: bila tertulis clipboard, tekan **Ctrl+V** di kotak chat; bila gagal total, lampirkan manual lewat tombol 📎 di chat |
 | Gambar diskip saat dipilih | Total gambar melebihi ~8 MB — kompres / perkecil gambar, lalu pilih ulang |
+| Auto-batch dijeda di tengah jalan | Cek status di panel: biasanya maks tunggu lewat atau tombol kirim tidak ketemu. Tunggu jawaban selesai / kirim manual, lalu tekan Lanjut. Naikkan maks tunggu untuk jawaban yang memang panjang |
+| Auto-batch terasa lambat saat tab tidak aktif | Itu throttling timer Chrome di tab background. Biarkan tab chat tetap terlihat selama batch jalan |
 | Tombol kirim tidak terklik (mode auto-send) | Kirim manual dengan Enter / tombol kirim; antrean tetap aman |
 | Antrean kosong setelah reload | Simpan ulang dari popup — antrean tersimpan per browser, bukan per tab |
 | Extension tidak aktif setelah update | Klik **Reload** pada kartu extension di `chrome://extensions` |
@@ -213,12 +235,20 @@ Reels-Creator/
 - [x] v1.2 — Gambar referensi `.jpg` / `.png` bersama prompt
 - [x] v1.2.1 — Suntik otomatis menyimpan draf + otomatis mengaktifkan tab lama
 - [x] v2.0 — Desain popup baru ala mockup (editor gelap, strip target, telemetri antrean) + pustaka prompt tersimpan + preset bawaan
-- [ ] v2.1 — Deteksi chat selesai menjawab sebelum prompt berikutnya disuntik
-- [ ] v2.1 — Jeda otomatis antar prompt
+- [x] v2.1 — Auto-batch: kirim antrean, tunggu jawaban selesai (heuristik), lanjut otomatis, jeda / berhenti
+- [ ] v2.2 — Scene splitter JSON + profil karakter
+- [ ] v2.2 — Export / import pustaka prompt (PC rumah ↔ kantor)
 
 ---
 
 ## 📜 Changelog
+
+### v2.1.0
+
+- Fitur baru **Auto-batch**: mulai dari popup atau panel di halaman chat, kirim antrean satu per satu dengan kirim otomatis yang dipaksakan selama batch (toggle manual tetap berlaku di luar batch).
+- Deteksi jawaban selesai via heuristik generik: tidak ada tombol Stop + isi halaman stabil selama jeda tenang (default 8 detik, bisa diatur 3–60 detik).
+- Pengaman: maks tunggu per prompt (default 5 menit, bisa diatur 1–30 menit) — lewat batas, batch dijeda bukan dilanjut; tombol kirim tidak ketemu juga menjeda batch.
+- Kontrol batch di popup (Mulai / Jeda-Lanjut / Berhenti + status) dan di panel halaman chat (▶ Auto-batch / ⏸ Jeda / ⏹ Berhenti), dengan pengaturan yang tersimpan dan dipakai panel.
 
 ### v2.0.0
 
