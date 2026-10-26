@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<title>Reels-Creator</title>
+<style>
+  body{width:380px;margin:0;padding:14px;font-family:system-ui,sans-serif;font-size:13px;color:#222}
+  h1{font-size:16px;margin:0 0 4px}
+  p{color:#555;line-height:1.45;margin:6px 0}
+  textarea{width:100%;height:180px;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:8px;font:12px/1.5 ui-monospace,monospace}
+  button{border:0;border-radius:8px;padding:9px 12px;cursor:pointer;background:#7c5cff;color:#fff;font-weight:600;margin:4px 4px 0 0}
+  button.secondary{background:#eee;color:#222}
+  button.danger{background:#c0392b}
+  label{display:block;margin:10px 0 4px;font-weight:600}
+  #status{background:#f2f2f7;border-radius:8px;padding:8px;margin-top:10px;line-height:1.45}
+  code{background:#eee;padding:1px 5px;border-radius:4px}
+</style>
+</head>
+<body>
+  <h1>🎬 Reels-Creator</h1>
+  <p>Tempel antrean prompt pembuatan video di bawah, satu prompt dipisah baris <code>---</code>. Bisa juga load file <code>.txt</code> / <code>.json</code> (array string, atau array objek dengan field <code>prompt</code>).</p>
+
+  <label for="queue">Antrean prompt</label>
+  <textarea id="queue" placeholder="Prompt video 1...&#10;---&#10;Prompt video 2..."></textarea>
+
+  <div>
+    <input type="file" id="file" accept=".txt,.json,.md" style="margin-top:8px">
+  </div>
+
+  <label><input type="checkbox" id="autoSend"> Kirim otomatis setelah disuntik (default OFF — lebih aman, cek dulu teksnya)</label>
+
+  <div>
+    <button id="save">Simpan antrean</button>
+    <button id="next">Suntik prompt berikutnya</button>
+    <button id="reset" class="secondary">Reset antrean</button>
+  </div>
+
+  <div id="status">Memuat status…</div>
+  <p>Cara pakai: buka chat Muse di tab lain → simpan antrean di sini → klik <b>Suntik prompt berikutnya</b> (atau tombol yang sama di panel kecil pojok kanan bawah halaman chat). Teks masuk ke kotak chat, lalu kirim manual — kecuali auto-send ON.</p>
+</body>
+<script src="popup.js"></script>
+</html>
