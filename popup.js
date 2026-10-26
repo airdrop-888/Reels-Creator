@@ -42,7 +42,7 @@ $('save').addEventListener('click', async () => {
   if (!queue.length) { $('status').textContent = 'Tidak ada prompt yang bisa disimpan. Cek lagi isinya.'; return; }
   await chrome.storage.local.set({ queue, index: 0, autoSend: $('autoSend').checked });
   await refreshStatus();
-  $('status').textContent += ' Antrean tersimpan, siap disuntik dari tab chat Muse.';
+  $('status').textContent += ' Antrean tersimpan, siap disuntik dari tab chat mana pun.';
 });
 
 $('autoSend').addEventListener('change', async () => {
@@ -55,7 +55,18 @@ $('next').addEventListener('click', async () => {
   const res = await sendToActiveTab({ type: 'rc-inject-next' });
   await refreshStatus();
   if (!res?.ok) {
-    $('status').textContent += ' Gagal menyuntik: pastikan tab aktif adalah chat Muse (muse.ai) dan halaman sudah dimuat penuh, lalu coba lagi.';
+    $('status').textContent += ' Gagal menyuntik: pastikan tab aktif adalah halaman chat dan sudah dimuat penuh, atau klik "Aktifkan di tab ini" dulu, lalu coba lagi.';
+  }
+});
+
+$('activate').addEventListener('click', async () => {
+  const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+  if (!tab?.id) { $('status').textContent = 'Tidak ada tab aktif.'; return; }
+  try {
+    await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+    $('status').textContent = 'Reels-Creator diaktifkan di tab ini. Panel kecil akan muncul di pojok kanan bawah halaman chat — klik "Suntik prompt berikutnya" dari sana.';
+  } catch (e) {
+    $('status').textContent = 'Gagal mengaktifkan di tab ini (halaman khusus browser seperti chrome:// tidak bisa diinjeksi). Buka halaman chat biasa lalu coba lagi.';
   }
 });
 

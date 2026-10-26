@@ -1,9 +1,9 @@
-// Reels-Creator v1 — content script untuk chat Muse (muse.ai)
-// Tugasnya cuma satu: cari kotak chat, isi dengan prompt berikutnya dari antrean.
-// Default TIDAK auto-send. Auto-send hanya jalan kalau toggle di popup/panel ON,
-// dan hanya kalau tombol kirim ketemu + aktif. Kalau tidak ketemu, teks tetap
-// terisi dan user tinggal tekan Enter / klik kirim manual.
+// Reels-Creator v1.1 — content script untuk chat AI (utama muse.ai,
+// juga chat lain yang diaktifkan lewat popup). Guard ganda supaya injeksi
+// on-demand tidak membuat panel/listener dobel.
 (() => {
+  if (window.__reelsCreatorLoaded) return;
+  window.__reelsCreatorLoaded = true;
   const PANEL_ID = 'reels-creator-panel';
 
   function isVisible(el) {
