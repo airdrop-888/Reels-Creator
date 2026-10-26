@@ -4,51 +4,214 @@
 <meta charset="utf-8">
 <title>Reels-Creator</title>
 <style>
-  body{width:380px;margin:0;padding:14px;font-family:system-ui,sans-serif;font-size:13px;color:#222}
-  h1{font-size:16px;margin:0 0 4px}
-  p{color:#555;line-height:1.45;margin:6px 0}
-  textarea{width:100%;height:180px;box-sizing:border-box;border:1px solid #ccc;border-radius:8px;padding:8px;font:12px/1.5 ui-monospace,monospace}
-  button{border:0;border-radius:8px;padding:9px 12px;cursor:pointer;background:#7c5cff;color:#fff;font-weight:600;margin:4px 4px 0 0}
-  button.secondary{background:#eee;color:#222}
-  button.danger{background:#c0392b}
-  label{display:block;margin:10px 0 4px;font-weight:600}
-  #status{background:#f2f2f7;border-radius:8px;padding:8px;margin-top:10px;line-height:1.45}
-  #refList{font-size:12px;color:#444;line-height:1.5;margin-top:4px}
-  #refList img{width:44px;height:44px;object-fit:cover;border-radius:6px;margin:2px 4px 2px 0;vertical-align:middle}
-  code{background:#eee;padding:1px 5px;border-radius:4px}
+  /* Desain v2.0 — meniru mockup, tapi 100% CSS lokal (tanpa CDN/font remote),
+     karena halaman extension MV3 memblokir script & font dari luar. */
+  *{box-sizing:border-box}
+  body{width:440px;margin:0;padding:0;font-family:system-ui,-apple-system,"Segoe UI",sans-serif;font-size:13px;color:#1e293b;background:#fff}
+  button{cursor:pointer;font-family:inherit}
+  .card{border:1px solid #e2e8f0;border-radius:16px;overflow:hidden}
+  header{padding:14px 16px 12px;border-bottom:1px solid #f1f5f9}
+  .head{display:flex;align-items:center;justify-content:space-between}
+  .brand{display:flex;align-items:center;gap:10px}
+  .logo{width:32px;height:32px;border-radius:8px;background:#4f46e5;color:#fff;display:flex;align-items:center;justify-content:center;font-size:17px;flex:0 0 auto}
+  h1{font-size:14px;margin:0;letter-spacing:-.2px;color:#0f172a}
+  .badge{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:999px;font-size:10px;font-weight:600;background:#ecfdf5;color:#047857;border:1px solid #a7f3d0;margin-left:6px}
+  .dot{width:6px;height:6px;border-radius:50%;background:#10b981}
+  .sub{font-size:11px;color:#94a3b8;margin-top:2px;font-weight:500}
+  .util{color:#94a3b8;font-size:14px}
+  .target{display:flex;align-items:center;justify-content:space-between;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 10px;font-size:11px;margin-top:10px}
+  .target .left{display:flex;align-items:center;gap:6px;color:#64748b;min-width:0}
+  .target code{font-family:ui-monospace,monospace;font-size:10.5px;color:#475569;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .target .state{font-weight:600;color:#4f46e5;flex:0 0 auto}
+  .target .state.warn{color:#d97706}
+  main{padding:16px;display:flex;flex-direction:column;gap:16px;max-height:580px;overflow-y:auto}
+  section{display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.6px;color:#1e293b}
+  .pill{padding:2px 7px;border-radius:999px;font-size:10px;font-weight:600;background:#eef2ff;color:#4338ca;border:1px solid #c7d2fe}
+  .hint{font-size:11px;color:#64748b;line-height:1.5;margin:0}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border-radius:10px;padding:8px 10px;font-size:11px;font-weight:600;border:1px solid #e2e8f0;background:#f8fafc;color:#475569}
+  .btn:hover{background:#f1f5f9}
+  .btn.primary{background:#4f46e5;border-color:#4f46e5;color:#fff}
+  .btn.primary:hover{background:#4338ca}
+  .btn.small{padding:5px 8px;font-size:11px;border-radius:8px}
+  .btn.danger-text{color:#e11d48;background:#fff}
+  code.inline{padding:1px 5px;border-radius:4px;background:#f1f5f9;border:1px solid #e2e8f0;font-family:ui-monospace,monospace;font-size:10px;color:#334155}
+  /* Editor gelap */
+  .editor{border:1px solid #e2e8f0;border-radius:12px;overflow:hidden;background:#020617;box-shadow:inset 0 1px 0 rgba(255,255,255,.05)}
+  .editor-bar{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;background:#0f172a;border-bottom:1px solid #1e293b;font-family:ui-monospace,monospace;font-size:10px;color:#94a3b8}
+  .editor-bar .dots{display:flex;align-items:center;gap:6px}
+  .editor-bar i{width:8px;height:8px;border-radius:50%;display:inline-block}
+  .editor-bar button{background:none;border:0;color:#94a3b8;font-size:10.5px;font-family:ui-monospace,monospace}
+  .editor-bar button:hover{color:#e2e8f0}
+  textarea#promptInput{width:100%;height:150px;background:transparent;color:#34d399;font-family:ui-monospace,monospace;font-size:11px;line-height:1.6;padding:12px;border:0;outline:0;resize:none}
+  textarea#promptInput::selection{background:#4f46e5;color:#fff}
+  .presets{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
+  .presets .p{flex:0 0 auto}
+  /* Pustaka prompt tersimpan */
+  .saved-box{border:1px solid #e2e8f0;border-radius:12px;padding:10px;background:#fff}
+  .saved-box input[type=text]{flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:7px 9px;font-size:12px;outline:0}
+  .saved-item{border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px}
+  .saved-item b{font-size:12px;color:#0f172a}
+  .saved-item .snip{font-family:ui-monospace,monospace;font-size:10.5px;color:#64748b;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .saved-item .actions{display:flex;gap:6px}
+  .empty{font-size:11px;color:#94a3b8}
+  /* Referensi */
+  .ref-box{background:#f8fafc;border:1px solid #e2e8f0;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:10px}
+  .ref-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+  .ref-tile{position:relative;aspect-ratio:1;border-radius:10px;overflow:hidden;border:1px solid #c7d2fe;background:#fff}
+  .ref-tile img{width:100%;height:100%;object-fit:cover;display:block}
+  .ref-tile .name{position:absolute;left:0;right:0;bottom:0;background:rgba(0,0,0,.55);color:#fff;font-family:ui-monospace,monospace;font-size:9px;padding:3px 5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ref-tile .rm{position:absolute;top:4px;right:4px;width:18px;height:18px;border:0;border-radius:50%;background:rgba(0,0,0,.6);color:#fff;font-size:11px;line-height:1}
+  .ref-tile .rm:hover{background:#e11d48}
+  .ref-add{aspect-ratio:1;border:2px dashed #e2e8f0;border-radius:10px;background:#fff;color:#94a3b8;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:16px;font-weight:600}
+  .ref-add:hover{border-color:#818cf8;color:#4f46e5;background:#eef2ff}
+  .ref-add span{font-size:9px;font-weight:600}
+  /* Toggle & aksi */
+  .toggle{display:flex;gap:10px;align-items:flex-start;padding:10px;border:1px solid #e2e8f0;border-radius:12px;background:#fff}
+  .toggle input{margin-top:2px;accent-color:#4f46e5;width:16px;height:16px}
+  .toggle b{font-size:12px;color:#1e293b}
+  .toggle span{font-size:11px;color:#94a3b8;line-height:1.4;display:block;margin-top:2px}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+  .grid2 .btn{width:100%;padding:10px}
+  .util-row{display:flex;gap:8px}
+  .util-row .btn{flex:1}
+  /* Telemetri */
+  .telemetry{background:linear-gradient(135deg,#f8fafc,#eef2ff);border:1px solid #e0e7ff;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .bar{height:6px;background:#e2e8f0;border-radius:999px;overflow:hidden}
+  .bar i{display:block;height:100%;background:#4f46e5;border-radius:999px;transition:width .3s}
+  .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;text-align:center;font-family:ui-monospace,monospace}
+  .stats div{background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:6px 2px}
+  .stats small{display:block;font-family:system-ui,sans-serif;font-size:9px;text-transform:uppercase;color:#94a3b8}
+  .stats b{font-size:12px;color:#0f172a}
+  .stats b.green{color:#059669}
+  #status{background:#f8fafc;border-radius:10px;padding:9px 10px;font-size:12px;line-height:1.5;color:#334155}
+  details{border:1px solid #e2e8f0;border-radius:12px;background:#fff;overflow:hidden;font-size:12px}
+  summary{padding:10px 12px;cursor:pointer;font-weight:600;color:#334155;list-style:none;display:flex;justify-content:space-between}
+  summary::-webkit-details-marker{display:none}
+  details .body{padding:0 12px 12px;border-top:1px solid #f1f5f9;background:#f8fafc;color:#64748b;font-size:11px;line-height:1.6}
+  details .body p{margin:8px 0}
+  .note{background:#fffbeb;border:1px solid #fde68a;color:#92400e;border-radius:8px;padding:8px;font-size:10.5px;line-height:1.5}
+  footer{padding:8px 16px;background:#f8fafc;border-top:1px solid #f1f5f9;display:flex;justify-content:space-between;font-family:ui-monospace,monospace;font-size:10.5px;color:#94a3b8}
+  kbd{padding:1px 5px;border-radius:4px;background:#fff;border:1px solid #fcd34d;font-family:ui-monospace,monospace;font-size:9px}
 </style>
 </head>
 <body>
-  <h1>🎬 Reels-Creator</h1>
-  <p>Tempel antrean prompt pembuatan video di bawah, satu prompt dipisah baris <code>---</code>. Bisa juga load file <code>.txt</code> / <code>.json</code> (array string, atau array objek dengan field <code>prompt</code>).</p>
+<div class="card">
+  <header>
+    <div class="head">
+      <div class="brand">
+        <div class="logo">🎬</div>
+        <div>
+          <div style="display:flex;align-items:center">
+            <h1>Reels-Creator</h1>
+            <span class="badge" id="versionBadge"><span class="dot"></span> v2.0</span>
+          </div>
+          <div class="sub">Prompt Injector &amp; Batch Automation</div>
+        </div>
+      </div>
+      <div class="util">⚙️&nbsp;&nbsp;ⓘ</div>
+    </div>
+    <div class="target">
+      <div class="left"><span class="dot"></span><span style="font-weight:600;color:#334155">Target:</span> <code id="targetText">memuat tab aktif…</code></div>
+      <span class="state warn" id="targetState">mengecek…</span>
+    </div>
+  </header>
 
-  <label for="queue">Antrean prompt</label>
-  <textarea id="queue" placeholder="Prompt video 1...&#10;---&#10;Prompt video 2..."></textarea>
+  <main>
+    <section>
+      <div class="row">
+        <span class="label">Antrean Prompt</span>
+        <span class="pill" id="queueBadge">0 Siap</span>
+        <button class="btn small" id="fileImportBtn" type="button">↑ Load .txt / .json</button>
+        <input type="file" id="file" accept=".txt,.json,.md" hidden>
+      </div>
+      <p class="hint">Tempel antrean prompt di bawah, pisahkan tiap prompt dengan tanda <code class="inline">---</code> atau format JSON Array.</p>
+      <div class="editor">
+        <div class="editor-bar">
+          <span class="dots"><i style="background:#fb7185"></i><i style="background:#fbbf24"></i><i style="background:#34d399"></i><span style="margin-left:6px;color:#cbd5e1">prompt_payload.json</span></span>
+          <button id="formatJsonBtn" type="button">Format JSON</button>
+        </div>
+        <textarea id="promptInput" spellcheck="false" placeholder="Tempel prompt / JSON di sini…"></textarea>
+      </div>
+      <div class="presets">
+        <span style="font-size:10px;font-weight:700;text-transform:uppercase;color:#94a3b8;align-self:center">Preset:</span>
+        <button class="btn small p" type="button" data-preset="AI Cat Streetwear">AI Cat Streetwear</button>
+        <button class="btn small p" type="button" data-preset="Cinematic 9:16">Cinematic 9:16</button>
+        <button class="btn small p" type="button" data-preset="Product Commercial">Product Commercial</button>
+      </div>
+    </section>
 
-  <div>
-    <input type="file" id="file" accept=".txt,.json,.md" style="margin-top:8px">
-  </div>
+    <section>
+      <div class="saved-box">
+        <div class="row"><span class="label">💾 Simpan Prompt — buat video serupa lagi</span></div>
+        <p class="hint">Simpan prompt yang sekarang ada di editor ke pustaka, supaya minggu depan tinggal pakai ulang tanpa mengetik / menempel lagi.</p>
+        <div style="display:flex;gap:6px">
+          <input type="text" id="savedName" placeholder="Nama prompt, mis: Kucing Streetwear v1">
+          <button class="btn primary" id="savePromptBtn" type="button">Simpan prompt ini</button>
+        </div>
+        <div id="savedList" style="display:flex;flex-direction:column;gap:8px"></div>
+      </div>
+    </section>
 
-  <label for="refFile">🖼️ Gambar referensi (.jpg / .png, opsional)</label>
-  <p style="font-weight:400">Dilampirkan bersama tiap prompt yang disuntik — misalnya foto karakter, gaya visual, atau produk yang jadi acuan video.</p>
-  <div>
-    <input type="file" id="refFile" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple>
-    <button id="clearRefs" class="secondary">Hapus gambar referensi</button>
-  </div>
-  <div id="refList">Belum ada gambar referensi.</div>
+    <section>
+      <div class="ref-box">
+        <div class="row">
+          <span style="font-size:12px;font-weight:700;color:#1e293b">🖼️ Gambar Referensi <span style="color:#94a3b8;font-weight:400">(.jpg / .png, opsional)</span></span>
+          <span id="refCount" style="font-size:10px;color:#94a3b8">0 Terlampir</span>
+        </div>
+        <p class="hint">Dilampirkan bersama tiap prompt yang disuntik — acuan karakter, gaya visual, atau subjek.</p>
+        <div class="ref-grid" id="refGrid"></div>
+        <input type="file" id="refFile" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple hidden>
+        <div class="row">
+          <button class="btn small danger-text" id="clearRefs" type="button">🗑 Hapus gambar referensi</button>
+          <span style="font-size:10px;color:#94a3b8">Ctrl+V juga didukung</span>
+        </div>
+      </div>
+    </section>
 
-  <label><input type="checkbox" id="autoSend"> Kirim otomatis setelah disuntik (default OFF — lebih aman, cek dulu teksnya)</label>
+    <section>
+      <label class="toggle">
+        <input type="checkbox" id="autoSend">
+        <span><b>Kirim otomatis setelah disuntik</b><span>(Default OFF — lebih aman, cek dulu teks &amp; attachment di kotak chat)</span></span>
+      </label>
+      <div class="grid2">
+        <button class="btn" id="save" type="button">↓ Simpan Antrean</button>
+        <button class="btn primary" id="next" type="button">⚡ Suntik Prompt</button>
+      </div>
+      <div class="util-row">
+        <button class="btn" id="activate" type="button">↻ Aktifkan di tab ini (chat lain)</button>
+        <button class="btn" id="reset" type="button">Reset Antrean</button>
+      </div>
+    </section>
 
-  <div>
-    <button id="save">Simpan antrean</button>
-    <button id="next">Suntik prompt berikutnya</button>
-    <button id="activate" class="secondary">Aktifkan di tab ini (chat lain)</button>
-    <button id="reset" class="secondary">Reset antrean</button>
-  </div>
+    <section>
+      <div class="telemetry">
+        <div class="row"><span style="font-size:12px;font-weight:600;color:#334155">Status Antrean Real-time</span><span id="queueProgressText" style="font-size:12px;font-weight:700;color:#4f46e5">0 / 0</span></div>
+        <div class="bar"><i id="progressBar" style="width:0%"></i></div>
+        <div class="stats">
+          <div><small>Total</small><b id="statTotal">0</b></div>
+          <div><small>Disuntik</small><b id="statInjected" class="green">0</b></div>
+          <div><small>Sisa</small><b id="statLeft">0</b></div>
+          <div><small>Auto-Send</small><b id="statAuto">OFF</b></div>
+        </div>
+      </div>
+      <div id="status">Memuat status…</div>
+    </section>
 
-  <div id="status">Memuat status…</div>
-  <p>Cara pakai: buka chat di tab lain → simpan antrean di sini → klik <b>Suntik prompt berikutnya</b> (atau tombol yang sama di panel kecil pojok kanan bawah halaman chat). Teks masuk ke kotak chat, lalu kirim manual — kecuali auto-send ON. Untuk chat di luar daftar situs bawaan, buka tab chat itu dulu lalu klik <b>Aktifkan di tab ini</b>.</p>
-  <p style="font-size:12px">Catatan gambar: dialog file picker bawaan OS tidak bisa diisi otomatis oleh extension mana pun. Extension mencoba lewat input file chat dulu, kalau tidak bisa, gambar pertama disalin ke clipboard — tinggal <b>Ctrl+V</b> di kotak chat.</p>
-</body>
+    <details>
+      <summary><span>ⓘ Panduan Cara Pakai &amp; Catatan Sistem</span><span>▾</span></summary>
+      <div class="body">
+        <p><b style="color:#334155">1. Alur kerja:</b> buka tab chat tujuan → simpan antrean prompt di popup ini → klik <b style="color:#4f46e5">Suntik Prompt</b>. Teks akan masuk ke kotak chat. Sejak v1.2.1, suntik juga otomatis menyimpan draf editor bila belum tersimpan.</p>
+        <p><b style="color:#334155">2. Tab lain:</b> bila memakai website AI berbeda, buka tab tersebut lalu klik <u>Aktifkan di tab ini</u>.</p>
+        <p><b style="color:#334155">3. Prompt tersimpan:</b> prompt yang sering dipakai ulang disimpan di pustaka di atas. Klik <b>Muat</b> untuk mengeditnya di editor, atau <b>Pakai</b> untuk langsung menjadikannya antrean.</p>
+        <div class="note"><b>Catatan media:</b> dialog file browser OS tidak dapat dipaksa otomatis oleh extension. Extension akan mencoba upload via input file, atau otomatis menyalin gambar ke clipboard (cukup tekan <kbd>Ctrl+V</kbd> pada kotak chat).</div>
+      </div>
+    </details>
+  </main>
+
+  <footer><span>Reels-Creator Helper Engine</span><span>● <span id="engineState">Ready</span></span></footer>
+</div>
 <script src="popup.js"></script>
+</body>
 </html>

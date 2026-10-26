@@ -1,6 +1,6 @@
 # 🎬 Reels-Creator
 
-![Version](https://img.shields.io/badge/version-1.2.1-7c5cff)
+![Version](https://img.shields.io/badge/version-2.0.0-7c5cff)
 ![Manifest](https://img.shields.io/badge/manifest-V3-333333)
 ![Browser](https://img.shields.io/badge/browser-Chrome-4285F4)
 ![Privacy](https://img.shields.io/badge/data-tidak%20dikirim%20ke%20server-2ea043)
@@ -16,6 +16,7 @@ Tempel antrean prompt sekali, lalu kirim satu per satu ke chat Muse, ChatGPT, Cl
 | Fitur | Keterangan |
 |---|---|
 | 📋 Antrean prompt | Simpan banyak prompt sekaligus, disuntik satu per satu sesuai urutan |
+| 💾 Prompt tersimpan | Simpan prompt ke pustaka lokal, pakai ulang kapan pun untuk video serupa |
 | 🖼️ Gambar referensi | Lampirkan `.jpg` / `.png` bersama prompt — karakter, gaya visual, atau produk acuan |
 | 🎯 Suntik otomatis | Prompt masuk langsung ke kotak chat, tanpa mengetik ulang |
 | 🖱️ Kirim manual (default) | Teks dicek dulu sebelum dikirim — aman dari salah kirim |
@@ -45,7 +46,19 @@ Extension ini dipasang secara manual (Load unpacked), tanpa perlu lewat Chrome W
 
 ### 1. Siapkan antrean prompt
 
-Klik ikon extension, tempel daftar prompt di kolom antrean, lalu klik **Simpan antrean**. Sejak v1.2.1, klik **Suntik prompt berikutnya** saja juga cukup — draf di textarea otomatis disimpan dulu bila belum tersimpan.
+Klik ikon extension, tempel daftar prompt di editor gelap, lalu klik **Simpan antrean**. Sejak v1.2.1, klik **Suntik prompt berikutnya** saja juga cukup — draf di textarea otomatis disimpan dulu bila belum tersimpan.
+
+### 2. Simpan prompt untuk dipakai ulang (baru di v2.0)
+
+Prompt yang hasilnya bagus jangan dibuang. Di popup, isi nama prompt (misalnya "Kucing Streetwear v1") lalu klik **Simpan prompt ini**. Prompt masuk ke pustaka lokal dan muncul di bawah editor.
+
+Lain kali, untuk video serupa:
+
+- Klik **Muat** — prompt masuk ke editor, bisa diedit dulu sebelum dikirim.
+- Klik **Pakai** — prompt langsung jadi antrean, tinggal klik **Suntik Prompt**.
+- Klik **Hapus** — menghapus prompt itu dari pustaka saja, antrean yang sedang berjalan tidak ikut terhapus.
+
+Preset bawaan juga tersedia di bawah editor: **AI Cat Streetwear**, **Cinematic 9:16**, dan **Product Commercial** — klik preset untuk mengisi editor dengan template JSON-nya, lalu sesuaikan isinya.
 
 ### 2. Tambahkan gambar referensi (opsional)
 
@@ -199,12 +212,21 @@ Reels-Creator/
 - [x] v1.1 — Dukungan multi-chat + aktivasi per-tab untuk chat lainnya
 - [x] v1.2 — Gambar referensi `.jpg` / `.png` bersama prompt
 - [x] v1.2.1 — Suntik otomatis menyimpan draf + otomatis mengaktifkan tab lama
-- [ ] v1.3 — Deteksi chat selesai menjawab sebelum prompt berikutnya disuntik
-- [ ] v1.3 — Jeda otomatis antar prompt dan template prompt bawaan
+- [x] v2.0 — Desain popup baru ala mockup (editor gelap, strip target, telemetri antrean) + pustaka prompt tersimpan + preset bawaan
+- [ ] v2.1 — Deteksi chat selesai menjawab sebelum prompt berikutnya disuntik
+- [ ] v2.1 — Jeda otomatis antar prompt
 
 ---
 
 ## 📜 Changelog
+
+### v2.0.0
+
+- Desain ulang popup mengikuti mockup: header dengan badge versi dari manifest, strip target tab aktif (Terkoneksi / Belum aktif), editor JSON gelap dengan tombol Format JSON, telemetri antrean (Total / Disuntik / Sisa / Auto-send + progress bar), dan panduan cara pakai dalam accordion.
+- Fitur baru **Simpan Prompt**: pustaka prompt lokal (nama + isi + tanggal), dengan aksi Muat / Pakai / Hapus, supaya video serupa bisa dibuat ulang tanpa mengetik ulang.
+- Preset bawaan: AI Cat Streetwear, Cinematic 9:16, Product Commercial.
+- Gambar referensi kini tampil sebagai grid thumbnail dengan hapus per gambar, bukan hanya hapus semua.
+- Catatan implementasi: desain dibuat dengan CSS lokal sepenuhnya, tanpa CDN Tailwind / font remote, karena halaman extension MV3 memblokir script dan font dari luar — tampilannya meniru mockup, bukan memuat Tailwind dari internet.
 
 ### v1.2.1
 
