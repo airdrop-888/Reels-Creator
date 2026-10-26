@@ -13,6 +13,8 @@
   button.danger{background:#c0392b}
   label{display:block;margin:10px 0 4px;font-weight:600}
   #status{background:#f2f2f7;border-radius:8px;padding:8px;margin-top:10px;line-height:1.45}
+  #refList{font-size:12px;color:#444;line-height:1.5;margin-top:4px}
+  #refList img{width:44px;height:44px;object-fit:cover;border-radius:6px;margin:2px 4px 2px 0;vertical-align:middle}
   code{background:#eee;padding:1px 5px;border-radius:4px}
 </style>
 </head>
@@ -27,6 +29,14 @@
     <input type="file" id="file" accept=".txt,.json,.md" style="margin-top:8px">
   </div>
 
+  <label for="refFile">🖼️ Gambar referensi (.jpg / .png, opsional)</label>
+  <p style="font-weight:400">Dilampirkan bersama tiap prompt yang disuntik — misalnya foto karakter, gaya visual, atau produk yang jadi acuan video.</p>
+  <div>
+    <input type="file" id="refFile" accept="image/jpeg,image/png,image/webp,.jpg,.jpeg,.png,.webp" multiple>
+    <button id="clearRefs" class="secondary">Hapus gambar referensi</button>
+  </div>
+  <div id="refList">Belum ada gambar referensi.</div>
+
   <label><input type="checkbox" id="autoSend"> Kirim otomatis setelah disuntik (default OFF — lebih aman, cek dulu teksnya)</label>
 
   <div>
@@ -38,6 +48,7 @@
 
   <div id="status">Memuat status…</div>
   <p>Cara pakai: buka chat di tab lain → simpan antrean di sini → klik <b>Suntik prompt berikutnya</b> (atau tombol yang sama di panel kecil pojok kanan bawah halaman chat). Teks masuk ke kotak chat, lalu kirim manual — kecuali auto-send ON. Untuk chat di luar daftar situs bawaan, buka tab chat itu dulu lalu klik <b>Aktifkan di tab ini</b>.</p>
+  <p style="font-size:12px">Catatan gambar: dialog file picker bawaan OS tidak bisa diisi otomatis oleh extension mana pun. Extension mencoba lewat input file chat dulu, kalau tidak bisa, gambar pertama disalin ke clipboard — tinggal <b>Ctrl+V</b> di kotak chat.</p>
 </body>
 <script src="popup.js"></script>
 </html>

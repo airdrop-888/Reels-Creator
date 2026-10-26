@@ -1,6 +1,6 @@
 # 🎬 Reels-Creator
 
-![Version](https://img.shields.io/badge/version-1.1.0-7c5cff)
+![Version](https://img.shields.io/badge/version-1.2.0-7c5cff)
 ![Manifest](https://img.shields.io/badge/manifest-V3-333333)
 ![Browser](https://img.shields.io/badge/browser-Chrome-4285F4)
 ![Privacy](https://img.shields.io/badge/data-tidak%20dikirim%20ke%20server-2ea043)
@@ -16,6 +16,7 @@ Tempel antrean prompt sekali, lalu kirim satu per satu ke chat Muse, ChatGPT, Cl
 | Fitur | Keterangan |
 |---|---|
 | 📋 Antrean prompt | Simpan banyak prompt sekaligus, disuntik satu per satu sesuai urutan |
+| 🖼️ Gambar referensi | Lampirkan `.jpg` / `.png` bersama prompt — karakter, gaya visual, atau produk acuan |
 | 🎯 Suntik otomatis | Prompt masuk langsung ke kotak chat, tanpa mengetik ulang |
 | 🖱️ Kirim manual (default) | Teks dicek dulu sebelum dikirim — aman dari salah kirim |
 | ⚡ Auto-send opsional | Bisa diaktifkan kalau sudah percaya dengan antreannya |
@@ -46,7 +47,11 @@ Extension ini dipasang secara manual (Load unpacked), tanpa perlu lewat Chrome W
 
 Klik ikon extension, tempel daftar prompt di kolom antrean, lalu klik **Simpan antrean**.
 
-### 2. Buka halaman chat
+### 2. Tambahkan gambar referensi (opsional)
+
+Di popup yang sama, klik pilih file pada bagian **Gambar referensi** dan pilih file `.jpg` / `.png` (`.webp` juga didukung). Gambar yang dipilih akan dilampirkan bersama tiap prompt yang disuntik — cocok untuk referensi karakter, gaya visual, atau foto produk.
+
+### 3. Buka halaman chat
 
 Buka chat tujuan di tab lain (misalnya `muse.ai`) dan pastikan halaman sudah termuat penuh.
 
@@ -61,6 +66,26 @@ Prompt sudah terisi di kotak chat. Periksa sekilas, lalu tekan **Enter** atau kl
 ### 5. Ulangi untuk prompt berikutnya
 
 Tunggu jawaban chat selesai, baru suntik prompt berikutnya. Satu antrean bisa dipakai untuk satu sesi produksi penuh.
+
+---
+
+## 🖼️ Gambar Referensi (.jpg / .png)
+
+Gambar referensi membuat hasil video lebih konsisten: chat AI bisa melihat karakter, gaya, atau produk yang dimaksud, bukan cuma membacanya dari teks.
+
+**Cara kerja:**
+
+1. Pilih gambar di popup extension (bagian **Gambar referensi**).
+2. Saat prompt disuntik, extension mencoba melampirkan gambar lewat input file yang sudah ada di halaman chat.
+3. Bila chat belum menampilkan input file, extension mencoba membuka tombol lampiran (📎/+) dulu, lalu melampirkan.
+4. Bila chat tetap tidak mengekspos input file, gambar pertama disalin ke clipboard — pengguna tinggal tekan **Ctrl+V** di kotak chat.
+
+**Batasan yang perlu diketahui (jujur, bukan janji manis):**
+
+- Dialog file picker bawaan sistem operasi **tidak bisa diisi otomatis oleh extension mana pun**. Itulah kenapa jalur di atas memakai input file halaman dan clipboard, bukan mengklik dialog OS.
+- Tiap chat punya cara lampiran yang berbeda, jadi lampiran otomatis tidak dijamin 100% di semua chat. Panel extension selalu memberi tahu metode yang berhasil — cek pratinjau lampiran sebelum mengirim.
+- Gambar disimpan lokal di browser sebagai data URL, dengan total praktis **~8 MB**. Gambar yang melebihi batas diskip dengan peringatan — kompres / perkecil dulu gambar besar sebelum dipilih.
+- Untuk menghapus referensi, klik **Hapus gambar referensi** di popup. Gambar referensi tidak ikut terhapus saat antrean di-reset.
 
 ---
 
@@ -132,7 +157,7 @@ Jika tombol kirim tidak ditemukan, teks tetap terisi dan pengguna tinggal mengir
 ## 🔒 Privasi & Keamanan
 
 - Extension **tidak menyimpan password** dan **tidak membaca jawaban chat**.
-- Antrean hanya tersimpan lokal di `chrome.storage.local` pada browser pengguna.
+- Antrean dan gambar referensi hanya tersimpan lokal di `chrome.storage.local` pada browser pengguna.
 - Tidak ada data yang dikirim ke server pihak ketiga mana pun.
 - Tidak ada pelacakan, tidak ada analitik.
 
@@ -159,6 +184,8 @@ Reels-Creator/
 |---|---|
 | Panel tidak muncul di halaman chat | Refresh halaman chat; untuk chat di luar daftar, klik **Aktifkan di tab ini** dari popup |
 | Teks tidak masuk ke kotak chat | Pastikan halaman chat termuat penuh, lalu coba suntik sekali lagi |
+| Gambar referensi tidak terlampir | Cek status di panel: bila tertulis clipboard, tekan **Ctrl+V** di kotak chat; bila gagal total, lampirkan manual lewat tombol 📎 di chat |
+| Gambar diskip saat dipilih | Total gambar melebihi ~8 MB — kompres / perkecil gambar, lalu pilih ulang |
 | Tombol kirim tidak terklik (mode auto-send) | Kirim manual dengan Enter / tombol kirim; antrean tetap aman |
 | Antrean kosong setelah reload | Simpan ulang dari popup — antrean tersimpan per browser, bukan per tab |
 | Extension tidak aktif setelah update | Klik **Reload** pada kartu extension di `chrome://extensions` |
@@ -169,12 +196,20 @@ Reels-Creator/
 
 - [x] v1.0 — Suntik antrean satu per satu ke `muse.ai`, auto-send opsional
 - [x] v1.1 — Dukungan multi-chat + aktivasi per-tab untuk chat lainnya
-- [ ] v1.2 — Deteksi chat selesai menjawab sebelum prompt berikutnya disuntik
-- [ ] v1.2 — Jeda otomatis antar prompt dan template prompt bawaan
+- [x] v1.2 — Gambar referensi `.jpg` / `.png` bersama prompt
+- [ ] v1.3 — Deteksi chat selesai menjawab sebelum prompt berikutnya disuntik
+- [ ] v1.3 — Jeda otomatis antar prompt dan template prompt bawaan
 
 ---
 
 ## 📜 Changelog
+
+### v1.2.0
+
+- Gambar referensi: pilih `.jpg` / `.png` (`.webp` juga) di popup, dilampirkan bersama tiap prompt yang disuntik.
+- Lampiran best-effort: input file chat → tombol lampiran → fallback clipboard (Ctrl+V), dengan status yang jujur soal metode yang berhasil.
+- Batas praktis total gambar ~8 MB (penyimpanan lokal browser), file berlebih diskip dengan peringatan.
+- Tombol **Hapus gambar referensi** di popup.
 
 ### v1.1.0
 

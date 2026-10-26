@@ -1,6 +1,10 @@
-// Popup Reels-Creator: kelola antrean di chrome.storage.local,
-// lalu perintahkan content script di tab Muse aktif untuk menyuntik prompt berikutnya.
+// Popup Reels-Creator: kelola antrean + gambar referensi di chrome.storage.local,
+// lalu perintahkan content script di tab aktif untuk menyuntik prompt berikutnya.
+// Gambar disimpan sebagai data URL (lokal, tidak dikirim ke server). Batas praktis:
+// total ~8 MB — di atas itu Chrome storage bisa menolak, jadi file besar diskip
+// dengan peringatan, bukan diam-diam hilang.
 const $ = (id) => document.getElementById(id);
+const MAX_REF_BYTES = 8 * 1024 * 1024;
 
 function parseQueue(raw) {
   const text = (raw || '').trim();
@@ -18,13 +22,42 @@ function parseQueue(raw) {
   return text.split(/^---\s*$/m).map((s) => s.trim()).filter(Boolean);
 }
 
+function readAsDataUrl(file) {
+  return new Promise((resolve, reject) => {
+    const r = new FileReader();
+    r.onload = () => resolve(r.result);
+    r.onerror = () => reject(r.error);
+    r.readAsDataURL(file);
+  });
+}
+
+async function refreshRefList() {
+  const { refImages = [] } = await chrome.storage.local.get({ refImages: [] });
+  if (!refImages.length) {
+    $('refList').textContent = 'Belum ada gambar referensi.';
+    return;
+  }
+  $('refList').innerHTML = '';
+  refImages.forEach((img) => {
+    const thumb = document.createElement('img');
+    thumb.src = img.dataUrl;
+    thumb.title = img.name;
+    thumb.alt = img.name;
+    $('refList').appendChild(thumb);
+  });
+  const names = refImages.map((i) => i.name).join(', ');
+  const span = document.createElement('span');
+  span.textContent = `${refImages.length} gambar: ${names}`;
+  $('refList').appendChild(span);
+}
+
 async function refreshStatus() {
-  const s = await chrome.storage.local.get({ queue: [], index: 0, autoSend: false });
+  const s = await chrome.storage.local.get({ queue: [], index: 0, autoSend: false, refImages: [] });
   const total = s.queue.length;
   $('autoSend').checked = !!s.autoSend;
   $('status').textContent = total === 0
-    ? 'Antrean kosong.'
-    : `Antrean: ${total} prompt, sudah disuntik ${Math.min(s.index, total)}, sisa ${total - Math.min(s.index, total)}. Auto-send: ${s.autoSend ? 'ON' : 'OFF'}.`;
+    ? `Antrean kosong. Gambar referensi: ${s.refImages.length}.`
+    : `Antrean: ${total} prompt, sudah disuntik ${Math.min(s.index, total)}, sisa ${total - Math.min(s.index, total)}. Gambar referensi: ${s.refImages.length}. Auto-send: ${s.autoSend ? 'ON' : 'OFF'}.`;
 }
 
 async function sendToActiveTab(message) {
@@ -83,8 +116,37 @@ $('file').addEventListener('change', async (e) => {
   $('status').textContent = `File ${f.name} dimuat ke textarea. Klik "Simpan antrean".`;
 });
 
-// Isi textarea dari antrean tersimpan (gabung pakai ---)
+$('refFile').addEventListener('change', async (e) => {
+  const files = [...(e.target.files || [])].filter((f) => f.type.startsWith('image/'));
+  if (!files.length) { $('status').textContent = 'Pilih file gambar (.jpg / .png / .webp).'; return; }
+  const { refImages = [] } = await chrome.storage.local.get({ refImages: [] });
+  const next = [...refImages];
+  let skipped = [];
+  let totalBytes = next.reduce((a, i) => a + (i.dataUrl?.length || 0), 0);
+  for (const f of files) {
+    const dataUrl = await readAsDataUrl(f);
+    if (totalBytes + dataUrl.length > MAX_REF_BYTES) { skipped.push(f.name); continue; }
+    totalBytes += dataUrl.length;
+    next.push({ name: f.name, type: f.type, dataUrl });
+  }
+  await chrome.storage.local.set({ refImages: next });
+  await refreshRefList();
+  await refreshStatus();
+  $('status').textContent = skipped.length
+    ? `${files.length - skipped.length} gambar ditambahkan. Diskip karena total melebihi ~8 MB: ${skipped.join(', ')} — pakai gambar yang dikompres / diperkecil dulu.`
+    : `${files.length} gambar referensi ditambahkan. Gambar akan dilampirkan bersama tiap prompt yang disuntik.`;
+  e.target.value = '';
+});
+
+$('clearRefs').addEventListener('click', async () => {
+  await chrome.storage.local.set({ refImages: [] });
+  await refreshRefList();
+  await refreshStatus();
+  $('status').textContent = 'Gambar referensi dihapus.';
+});
+
 chrome.storage.local.get({ queue: [] }).then((s) => {
   if (s.queue.length) $('queue').value = s.queue.join('\n---\n');
   refreshStatus();
+  refreshRefList();
 });
