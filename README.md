@@ -1,6 +1,6 @@
 # 🎬 Reels-Creator
 
-![Version](https://img.shields.io/badge/version-2.1.0-7c5cff)
+![Version](https://img.shields.io/badge/version-2.2.0-7c5cff)
 ![Manifest](https://img.shields.io/badge/manifest-V3-333333)
 ![Browser](https://img.shields.io/badge/browser-Chrome-4285F4)
 ![Privacy](https://img.shields.io/badge/data-tidak%20dikirim%20ke%20server-2ea043)
@@ -17,6 +17,8 @@ Tempel antrean prompt sekali, lalu kirim satu per satu ke chat Muse, ChatGPT, Cl
 |---|---|
 | 📋 Antrean prompt | Simpan banyak prompt sekaligus, disuntik satu per satu sesuai urutan |
 | 🤖 Auto-batch | Kirim antrean otomatis: tunggu jawaban selesai, lalu kirim prompt berikutnya sendiri |
+| 🎬 Project & pengganda | 1 template + profil karakter dikunci + daftar variasi → N antrean (1 baris = 1 video) |
+| 📦 Simpan jawaban + export JSON | Tiap jawaban auto-batch disimpan lokal, divalidasi JSON/scene, lalu di-export jadi 1 file JSON siap render |
 | 💾 Prompt tersimpan | Simpan prompt ke pustaka lokal, pakai ulang kapan pun untuk video serupa |
 | 🖼️ Gambar referensi | Lampirkan `.jpg` / `.png` bersama prompt — karakter, gaya visual, atau produk acuan |
 | 🎯 Suntik otomatis | Prompt masuk langsung ke kotak chat, tanpa mengetik ulang |
@@ -48,6 +50,17 @@ Extension ini dipasang secara manual (Load unpacked), tanpa perlu lewat Chrome W
 ### 1. Siapkan antrean prompt
 
 Klik ikon extension, tempel daftar prompt di editor gelap, lalu klik **Simpan antrean**. Sejak v1.2.1, klik **Suntik prompt berikutnya** saja juga cukup — draf di textarea otomatis disimpan dulu bila belum tersimpan.
+
+### 2. Project & pengganda — 1 prompt jadi N video (baru di v2.2)
+
+Di popup bagian **Project & Pengganda**, isi:
+
+1. **Nama project** — misal `AI Cat Streetwear`.
+2. **Profil karakter** — deskripsi lengkap yang dikunci, misal kucing oranye gemuk, jaket denim oversize, bandana merah, gaya hyper-realistic. Profil ini disuntik ke tiap prompt, jadi karakter konsisten walau tiap video beda tema.
+3. **Template prompt** — pakai variabel `{{character}}`, `{{theme}}`, `{{project}}` (atau `[CHARACTER_PROFILE]` untuk preset lama).
+4. **Daftar variasi** — 1 baris = 1 video, misal naik sepeda lowrider, mandi busa, jaga parkir.
+
+Klik **Buat antrean dari project ini** — template langsung mengembang jadi N prompt di antrean. Lalu jalankan **auto-batch** seperti biasa. Tiap jawaban yang selesai otomatis tersimpan di bagian **Hasil Auto-batch**, lengkap dengan project, tema, status JSON valid / jumlah scene. Klik **Export hasil jadi JSON** untuk mengunduh 1 file `reels-creator-hasil-*.json` siap dipakai ke tahap render.
 
 ### 2. Simpan prompt untuk dipakai ulang (baru di v2.0)
 
@@ -189,8 +202,9 @@ Jika tombol kirim tidak ditemukan, teks tetap terisi dan pengguna tinggal mengir
 
 ## 🔒 Privasi & Keamanan
 
-- Extension **tidak menyimpan password** dan **tidak membaca jawaban chat**.
-- Antrean dan gambar referensi hanya tersimpan lokal di `chrome.storage.local` pada browser pengguna.
+- Extension **tidak menyimpan password**.
+- Sejak v2.2, extension **membaca jawaban chat hanya saat auto-batch berjalan** — tepat setelah jawaban dinyatakan selesai — untuk menyimpannya sebagai hasil. Jawaban, antrean, dan gambar referensi hanya tersimpan lokal di `chrome.storage.local` pada browser pengguna.
+- Sebelum v2.2, extension memang tidak membaca jawaban chat sama sekali; perubahan ini sengaja, karena tanpa simpan jawaban automation putus di tengah.
 - Tidak ada data yang dikirim ke server pihak ketiga mana pun.
 - Tidak ada pelacakan, tidak ada analitik.
 
@@ -221,6 +235,7 @@ Reels-Creator/
 | Gambar referensi tidak terlampir | Cek status di panel: bila tertulis clipboard, tekan **Ctrl+V** di kotak chat; bila gagal total, lampirkan manual lewat tombol 📎 di chat |
 | Gambar diskip saat dipilih | Total gambar melebihi ~8 MB — kompres / perkecil gambar, lalu pilih ulang |
 | Auto-batch dijeda di tengah jalan | Cek status di panel: biasanya maks tunggu lewat atau tombol kirim tidak ketemu. Tunggu jawaban selesai / kirim manual, lalu tekan Lanjut. Naikkan maks tunggu untuk jawaban yang memang panjang |
+| Jawaban tidak tersimpan (capture_failed) | Penangkapan jawaban itu heuristik generik, bukan API resmi — layout chat tertentu belum dikenali. Job tetap dicatat, salin jawaban manual dari chat untuk job itu; job lain yang berhasil tetap bisa di-export |
 | Auto-batch terasa lambat saat tab tidak aktif | Itu throttling timer Chrome di tab background. Biarkan tab chat tetap terlihat selama batch jalan |
 | Tombol kirim tidak terklik (mode auto-send) | Kirim manual dengan Enter / tombol kirim; antrean tetap aman |
 | Antrean kosong setelah reload | Simpan ulang dari popup — antrean tersimpan per browser, bukan per tab |
@@ -236,12 +251,20 @@ Reels-Creator/
 - [x] v1.2.1 — Suntik otomatis menyimpan draf + otomatis mengaktifkan tab lama
 - [x] v2.0 — Desain popup baru ala mockup (editor gelap, strip target, telemetri antrean) + pustaka prompt tersimpan + preset bawaan
 - [x] v2.1 — Auto-batch: kirim antrean, tunggu jawaban selesai (heuristik), lanjut otomatis, jeda / berhenti
-- [ ] v2.2 — Scene splitter JSON + profil karakter
-- [ ] v2.2 — Export / import pustaka prompt (PC rumah ↔ kantor)
+- [x] v2.2 — Project + profil karakter + pengganda variasi (1 prompt → N video) + simpan jawaban + export JSON siap render
+- [ ] v2.3 — Validasi jawaban + retry otomatis + scene splitter + riwayat anti-duplikat
+- [ ] v2.3 — Export / import pustaka prompt (PC rumah ↔ kantor)
 
 ---
 
 ## 📜 Changelog
+
+### v2.2.0
+
+- Fitur baru **Project & Pengganda**: nama project + profil karakter yang dikunci + template prompt dengan variabel `{{character}}`, `{{theme}}`, `{{project}}` (plus `[CHARACTER_PROFILE]` untuk preset lama) + daftar variasi 1 baris = 1 video → tombol **Buat antrean dari project ini** mengembang template jadi N antrean. Project tersimpan dan dimuat ulang saat popup dibuka.
+- Fitur baru **Simpan jawaban auto-batch**: setelah jawaban dinyatakan selesai, content script menangkap teks jawaban baru, memvalidasi JSON / jumlah scene, dan menyimpannya lokal di `chrome.storage.local` (maks 200 hasil, tanpa kirim ke server). Status batch di akhir menampilkan berapa jawaban tersimpan dan berapa yang gagal ditangkap.
+- Fitur baru **Export hasil jadi JSON**: 1 file `reels-creator-hasil-*.json` berisi semua hasil (project, tema, prompt, jawaban, status JSON/scene, waktu, URL sumber) — siap dipakai ke tahap render. Daftar hasil di popup bisa dibuka per item dan jawabannya bisa disalin.
+- Batasan jujur: penangkapan jawaban adalah heuristik generik lintas chat, bukan API resmi — kalau layout chat belum dikenali, job dicatat `capture_failed` (bukan hilang diam-diam) dan perlu salin manual untuk job itu. Bagian Privasi di README diperbarui karena v2.2 memang membaca jawaban — hanya saat auto-batch, hanya untuk disimpan lokal.
 
 ### v2.1.0
 

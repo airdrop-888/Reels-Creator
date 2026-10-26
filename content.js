@@ -1,6 +1,16 @@
-// Reels-Creator v2.1 — content script untuk chat AI (utama muse.ai,
+// Reels-Creator v2.2 — content script untuk chat AI (utama muse.ai,
 // juga chat lain yang diaktifkan lewat popup). Guard ganda supaya injeksi
 // on-demand tidak membuat panel/listener dobel.
+//
+// v2.2 BARU — simpan jawaban: setelah auto-batch menunggu jawaban selesai,
+// content script mengambil teks jawaban baru (bukan promptnya), memvalidasi
+// apakah ia JSON / punya scenes, lalu menyimpannya lokal di
+// chrome.storage.local sebagai `results` (tidak dikirim ke server mana pun).
+// Penangkapan ini heuristik generik lintas chat (bukan API resmi), jadi
+// untuk layout chat yang belum dikenali hasilnya bisa kosong — dalam hal
+// itu hasil tetap dicatat dengan status capture_failed agar tidak hilang
+// diam-diam, dan user bisa salin jawaban manual lalu export tetap jalan
+// untuk job-job yang berhasil ditangkap.
 //
 // Gambar referensi (.jpg/.png): best-effort, karena dialog file picker
 // bawaan OS tidak bisa diisi otomatis oleh extension mana pun. Strateginya:
@@ -102,13 +112,85 @@
   }
 
   async function getState() {
-    const s = await chrome.storage.local.get({ queue: [], index: 0, autoSend: false, refImages: [] });
+    const s = await chrome.storage.local.get({ queue: [], index: 0, autoSend: false, refImages: [], queueMeta: [] });
     return {
       queue: Array.isArray(s.queue) ? s.queue : [],
       index: s.index || 0,
       autoSend: !!s.autoSend,
       refImages: Array.isArray(s.refImages) ? s.refImages : [],
+      queueMeta: Array.isArray(s.queueMeta) ? s.queueMeta : [],
     };
+  }
+
+  // --- v2.2: tangkap jawaban baru setelah jawaban selesai ---
+  function snapshotTexts() {
+    const out = new Set();
+    const add = (t) => {
+      const s = (t || '').replace(/\s+/g, ' ').trim();
+      if (s.length >= 30) out.add(s);
+    };
+    document.querySelectorAll('[data-message-author-role="assistant"], [data-role="assistant"]').forEach((el) => add(el.textContent));
+    document.querySelectorAll('p, li, pre').forEach((el) => add(el.textContent));
+    return out;
+  }
+
+  function extractJsonInfo(text) {
+    if (!text) return { jsonValid: false, sceneCount: null };
+    const tryParse = (s) => { try { return JSON.parse(s); } catch (_) { return null; } };
+    let obj = tryParse(text.trim());
+    if (!obj) {
+      const start = text.indexOf('{');
+      const end = text.lastIndexOf('}');
+      if (start >= 0 && end > start) obj = tryParse(text.slice(start, end + 1));
+    }
+    if (!obj) {
+      const start = text.indexOf('[');
+      const end = text.lastIndexOf(']');
+      if (start >= 0 && end > start) obj = tryParse(text.slice(start, end + 1));
+    }
+    if (!obj) return { jsonValid: false, sceneCount: null };
+    const scenes = Array.isArray(obj) ? obj : obj.scenes;
+    return { jsonValid: true, sceneCount: Array.isArray(scenes) ? scenes.length : null };
+  }
+
+  function captureAnswer(beforeSet, promptText) {
+    const candidates = [];
+    document.querySelectorAll('[data-message-author-role="assistant"], [data-role="assistant"]').forEach((el) => {
+      const s = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (s.length >= 80 && !s.includes(promptText.slice(0, 60))) candidates.push(s);
+    });
+    // Blok teks baru yang tidak ada sebelum prompt dikirim = jawaban baru.
+    document.querySelectorAll('p, li, pre').forEach((el) => {
+      const s = (el.textContent || '').replace(/\s+/g, ' ').trim();
+      if (s.length >= 30 && !beforeSet.has(s) && !candidates.includes(s)) candidates.push(s);
+    });
+    // Buang blok yang isinya cuma prompt itu sendiri / tombol / UI pendek.
+    const filtered = candidates.filter((s) => s.length >= 80 && !s.startsWith(promptText.slice(0, 40)));
+    const answer = filtered.join('\n\n').slice(0, 30000);
+    const info = extractJsonInfo(answer);
+    return { answer, captured: answer.length >= 80, ...info };
+  }
+
+  async function saveResult(meta, promptText, captured) {
+    try {
+      const s = await chrome.storage.local.get({ results: [] });
+      const results = Array.isArray(s.results) ? s.results : [];
+      results.push({
+        id: Date.now().toString(36) + Math.random().toString(36).slice(2, 7),
+        project: meta?.project || '',
+        theme: meta?.theme || '',
+        prompt: promptText,
+        answer: captured.answer || '',
+        captured: captured.captured,
+        jsonValid: captured.jsonValid,
+        sceneCount: captured.sceneCount,
+        capturedAt: new Date().toISOString(),
+        sourceUrl: location.href,
+      });
+      while (results.length > 200) results.shift();
+      await chrome.storage.local.set({ results });
+      return results.length;
+    } catch (_) { return null; }
   }
 
   function setStatus(msg) {
@@ -275,6 +357,8 @@
   }
 
   async function runBatchLoop() {
+    let savedCount = 0;
+    let captureFailedCount = 0;
     while (batchRunning) {
       if (batchStopRequested) break;
       if (batchPaused) break;
@@ -286,6 +370,9 @@
         setStatus('Auto-batch berhenti: kotak chat tidak ketemu. Refresh halaman chat lalu mulai lagi.');
         break;
       }
+      const promptText = state.queue[state.index];
+      const promptMeta = state.queueMeta[state.index] || {};
+      const beforeTexts = snapshotTexts();
       setStatus(`Auto-batch: mengirim prompt ${state.index + 1}/${state.queue.length}…`);
       const res = await injectNext({ forceSend: true });
       if (!res.ok) {
@@ -313,6 +400,16 @@
         setStatus(`Auto-batch dijeda: jawaban prompt ${res.index} belum selesai setelah ${batchSettings.maxWaitSec} detik. Cek chat, tunggu selesai, lalu tekan Lanjut.`);
         break;
       }
+      // v2.2: jawaban selesai -> tangkap & simpan lokal sebelum prompt berikut.
+      const captured = captureAnswer(beforeTexts, promptText);
+      await saveResult(promptMeta, promptText, captured);
+      if (captured.captured) {
+        savedCount += 1;
+        setStatus(`Auto-batch: jawaban prompt ${res.index}/${res.total} tersimpan (${captured.answer.length} karakter${captured.jsonValid ? `, JSON valid${captured.sceneCount != null ? `, ${captured.sceneCount} scene` : ''}` : ', bukan JSON'}). Lanjut ke prompt berikutnya…`);
+      } else {
+        captureFailedCount += 1;
+        setStatus(`Auto-batch: jawaban prompt ${res.index}/${res.total} TIDAK berhasil ditangkap otomatis (layout chat belum dikenali) — dicatat capture_failed, salin manual dari chat bila perlu. Lanjut ke prompt berikutnya…`);
+      }
       await sleep(1500);
     }
     const wasStopped = batchStopRequested;
@@ -326,7 +423,7 @@
       const state = await getState();
       if (state.index >= state.queue.length) {
         batchMode = 'done';
-        setStatus(`Auto-batch selesai. Semua ${state.queue.length} prompt terkirim.`);
+        setStatus(`Auto-batch selesai. Semua ${state.queue.length} prompt terkirim, ${savedCount} jawaban tersimpan${captureFailedCount ? `, ${captureFailedCount} gagal ditangkap otomatis` : ''}. Buka popup extension untuk export JSON.`);
       }
     }
     batchStopRequested = false;

@@ -48,6 +48,12 @@
   textarea#promptInput::selection{background:#4f46e5;color:#fff}
   .presets{display:flex;gap:6px;overflow-x:auto;padding-bottom:2px}
   .presets .p{flex:0 0 auto}
+  /* v2.2: project & hasil */
+  .v22-box{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+  .v22-box input[type=text], .v22-box textarea{width:100%;border:1px solid #bbf7d0;border-radius:8px;padding:7px 9px;font-size:12px;outline:0;background:#fff;font-family:inherit}
+  .v22-box textarea{font-family:ui-monospace,monospace;font-size:11px;line-height:1.5;resize:vertical}
+  .result-item{border:1px solid #e2e8f0;border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:6px;background:#fff}
+  .result-item pre{white-space:pre-wrap;word-break:break-word;font-family:ui-monospace,monospace;font-size:10.5px;color:#334155;max-height:180px;overflow:auto;margin:0}
   /* Pustaka prompt tersimpan */
   .saved-box{border:1px solid #e2e8f0;border-radius:12px;padding:10px;background:#fff}
   .saved-box input[type=text]{flex:1;border:1px solid #e2e8f0;border-radius:8px;padding:7px 9px;font-size:12px;outline:0}
@@ -146,6 +152,19 @@
     </section>
 
     <section>
+      <div class="v22-box">
+        <div class="row"><span class="label">🎬 Project &amp; Pengganda — v2.2</span><span class="pill">1 prompt → N video</span></div>
+        <p class="hint">Isi 1 template + profil karakter yang dikunci, lalu daftar variasinya (1 baris = 1 video). Klik tombol di bawah, template langsung mengembang jadi antrean. Variabel: <code class="inline">{{character}}</code>, <code class="inline">{{theme}}</code>, <code class="inline">{{project}}</code> — juga <code class="inline">[CHARACTER_PROFILE]</code> untuk preset lama.</p>
+        <input type="text" id="projectName" placeholder="Nama project, mis: AI Cat Streetwear">
+        <textarea id="characterProfile" rows="3" placeholder="Profil karakter yang dikunci, mis: Kucing oranye gemuk, jaket denim oversize, bandana merah, mata besar ekspresif, gaya foto hyper-realistic…"></textarea>
+        <textarea id="promptTemplate" rows="4" placeholder="Template prompt, mis: {{character}} sedang {{theme}}, video vertikal 9:16, satu aksi jelas, gaya cinematic…"></textarea>
+        <textarea id="variationsInput" rows="4" placeholder="Daftar variasi, 1 baris = 1 video:&#10;naik sepeda lowrider mini di jalan desa&#10;mandi busa di bak plastik&#10;jaga parkir di pangkalan ojek&#10;kehujanan sambil pegang payung kecil"></textarea>
+        <button class="btn primary" id="generateQueueBtn" type="button">⚡ Buat antrean dari project ini</button>
+        <p class="hint" id="v22GenStatus" style="color:#15803d"></p>
+      </div>
+    </section>
+
+    <section>
       <div class="saved-box">
         <div class="row"><span class="label">💾 Simpan Prompt — buat video serupa lagi</span></div>
         <p class="hint">Simpan prompt yang sekarang ada di editor ke pustaka, supaya minggu depan tinggal pakai ulang tanpa mengetik / menempel lagi.</p>
@@ -204,6 +223,18 @@
           <button class="btn" id="batchPauseBtn" type="button">⏸ Jeda / Lanjut</button>
         </div>
         <div id="batchStatus" style="font-size:11px;color:#4338ca;line-height:1.5">Auto-batch belum berjalan.</div>
+      </div>
+    </section>
+
+    <section>
+      <div class="v22-box" style="background:#eef2ff;border-color:#c7d2fe">
+        <div class="row"><span class="label">📦 Hasil Auto-batch — jawaban tersimpan</span><span class="pill" id="resultsCount">0 hasil</span></div>
+        <p class="hint">Tiap jawaban yang selesai di auto-batch disimpan lokal di browser ini (tidak dikirim ke server). Export jadi 1 file JSON siap render — isinya prompt, jawaban, project, tema, dan status JSON/scene.</p>
+        <div class="util-row">
+          <button class="btn primary" id="exportJsonBtn" type="button">⬇ Export hasil jadi JSON</button>
+          <button class="btn danger-text" id="clearResultsBtn" type="button">🗑 Hapus hasil</button>
+        </div>
+        <div id="resultsList" style="display:flex;flex-direction:column;gap:8px"></div>
       </div>
     </section>
 

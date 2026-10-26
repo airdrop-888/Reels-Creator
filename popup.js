@@ -1,4 +1,6 @@
-// Popup Reels-Creator v2.0 — desain baru + pustaka prompt tersimpan.
+// Popup Reels-Creator v2.2 — desain baru + pustaka prompt tersimpan
+// + v2.2: project & pengganda variasi (1 template -> N antrean) dan
+// hasil auto-batch (jawaban tersimpan lokal + export JSON).
 // Semua data lokal di chrome.storage.local, tidak dikirim ke server.
 // - queue/index/autoSend/refImages: seperti v1.2.x
 // - savedPrompts: [{id, name, text, createdAt}] — prompt yang disimpan user
@@ -70,6 +72,123 @@ function parseQueue(raw) {
   }
   return text.split(/^---\s*$/m).map((s) => s.trim()).filter(Boolean);
 }
+
+// --- v2.2: project & pengganda variasi ---
+function expandTemplate(template, project, character, variation) {
+  let out = template;
+  const reps = [
+    [/{{\s*character\s*}}/gi, character],
+    [/{{\s*karakter\s*}}/gi, character],
+    [/\[CHARACTER_PROFILE\]/g, character],
+    [/{{\s*theme\s*}}/gi, variation],
+    [/{{\s*tema\s*}}/gi, variation],
+    [/{{\s*variation\s*}}/gi, variation],
+    [/{{\s*variasi\s*}}/gi, variation],
+    [/{{\s*project\s*}}/gi, project],
+  ];
+  reps.forEach(([re, val]) => { out = out.replace(re, val || ''); });
+  if (variation && !/{{\s*(theme|tema|variation|variasi)\s*}}/i.test(template)) {
+    out = `${out}\n\nTema / variasi video ini: ${variation}`;
+  }
+  return out.trim();
+}
+
+async function refreshResults() {
+  const { results = [] } = await chrome.storage.local.get({ results: [] });
+  $('resultsCount').textContent = `${results.length} hasil`;
+  const list = $('resultsList');
+  list.innerHTML = '';
+  if (!results.length) {
+    const p = document.createElement('p');
+    p.className = 'empty';
+    p.textContent = 'Belum ada jawaban tersimpan. Jalankan auto-batch, jawaban tiap prompt akan muncul di sini.';
+    list.appendChild(p);
+    return;
+  }
+  [...results].slice(-10).reverse().forEach((r) => {
+    const div = document.createElement('div');
+    div.className = 'result-item';
+    const title = document.createElement('b');
+    title.style.fontSize = '12px';
+    title.textContent = `${r.project || 'Tanpa project'}${r.theme ? ` — ${r.theme}` : ''}`;
+    const meta = document.createElement('div');
+    meta.style.fontSize = '10.5px';
+    meta.style.color = '#64748b';
+    const date = r.capturedAt ? new Date(r.capturedAt).toLocaleString('id-ID') : '-';
+    meta.textContent = `${date} · ${r.captured ? `${r.answer.length} karakter` : 'gagal ditangkap otomatis'}${r.jsonValid ? ` · JSON valid${r.sceneCount != null ? ` · ${r.sceneCount} scene` : ''}` : ''}`;
+    const det = document.createElement('details');
+    const sum = document.createElement('summary');
+    sum.textContent = r.captured ? 'Lihat jawaban' : 'Tidak ada jawaban tersimpan';
+    const pre = document.createElement('pre');
+    pre.textContent = r.captured ? r.answer.slice(0, 4000) : 'Jawaban tidak berhasil ditangkap otomatis dari layout chat ini. Salin manual dari chat, lalu pakai hasil lain yang berhasil — atau laporkan layout chatnya untuk diperbaiki.';
+    det.append(sum, pre);
+    const actions = document.createElement('div');
+    actions.style.display = 'flex';
+    actions.style.gap = '6px';
+    if (r.captured) {
+      const cp = document.createElement('button');
+      cp.type = 'button'; cp.className = 'btn small';
+      cp.textContent = 'Salin jawaban';
+      cp.addEventListener('click', async () => {
+        try { await navigator.clipboard.writeText(r.answer); setMsg('Jawaban disalin ke clipboard.'); }
+        catch (_) { setMsg('Gagal menyalin — buka detail jawaban dan salin manual.'); }
+      });
+      actions.appendChild(cp);
+    }
+    div.append(title, meta, det, actions);
+    list.appendChild(div);
+  });
+}
+
+$('generateQueueBtn').addEventListener('click', async () => {
+  const project = $('projectName').value.trim();
+  const character = $('characterProfile').value.trim();
+  const template = $('promptTemplate').value.trim();
+  if (!template) { setMsg('Template prompt masih kosong — isi dulu template v2.2 di atas.'); return; }
+  const variations = $('variationsInput').value.split('\n').map((s) => s.trim()).filter(Boolean);
+  const list = variations.length ? variations : [''];
+  const queue = list.map((v) => expandTemplate(template, project, character, v));
+  const queueMeta = list.map((v) => ({ project, theme: v }));
+  await chrome.storage.local.set({
+    queue, queueMeta, index: 0,
+    autoSend: $('autoSend').checked,
+    v22: { project, character, template, variations: $('variationsInput').value },
+  });
+  $('promptInput').value = queue.join('\n---\n');
+  await refreshStatus();
+  $('v22GenStatus').textContent = `Antrean dibuat: ${queue.length} prompt dari project "${project || 'tanpa nama'}". Klik Mulai auto-batch — tiap jawaban akan tersimpan otomatis.`;
+  setMsg(`Antrean v2.2 dibuat: ${queue.length} prompt. Siap di-auto-batch.`);
+});
+
+$('exportJsonBtn').addEventListener('click', async () => {
+  const { results = [] } = await chrome.storage.local.get({ results: [] });
+  if (!results.length) { setMsg('Belum ada hasil untuk di-export. Jalankan auto-batch dulu.'); return; }
+  const bundle = {
+    exportedAt: new Date().toISOString(),
+    tool: 'Reels-Creator',
+    version: chrome.runtime.getManifest().version,
+    count: results.length,
+    videos: results.map((r) => ({
+      project: r.project, theme: r.theme, prompt: r.prompt, answer: r.answer,
+      captured: r.captured, jsonValid: r.jsonValid, sceneCount: r.sceneCount,
+      capturedAt: r.capturedAt, sourceUrl: r.sourceUrl,
+    })),
+  };
+  const blob = new Blob([JSON.stringify(bundle, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+  a.href = url; a.download = `reels-creator-hasil-${stamp}.json`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 5000);
+  setMsg(`Export berhasil: ${results.length} hasil diunduh sebagai JSON siap render.`);
+});
+
+$('clearResultsBtn').addEventListener('click', async () => {
+  await chrome.storage.local.set({ results: [] });
+  await refreshResults();
+  setMsg('Hasil auto-batch dihapus. Antrean tidak ikut terhapus.');
+});
 
 function readAsDataUrl(file) {
   return new Promise((resolve, reject) => {
@@ -426,8 +545,17 @@ chrome.storage.local.get({ queue: [] }).then((s) => {
   refreshStatus();
   refreshRefGrid();
   refreshSavedList();
+  refreshResults();
   refreshTarget();
   refreshBatchStatus();
+  chrome.storage.local.get({ v22: null }).then((v) => {
+    if (v.v22) {
+      $('projectName').value = v.v22.project || '';
+      $('characterProfile').value = v.v22.character || '';
+      $('promptTemplate').value = v.v22.template || '';
+      $('variationsInput').value = v.v22.variations || '';
+    }
+  });
   chrome.storage.local.get({ batchQuietSec: 8, batchMaxWaitMin: 5 }).then((b) => {
     $('batchQuietSec').value = b.batchQuietSec;
     $('batchMaxWaitMin').value = b.batchMaxWaitMin;
