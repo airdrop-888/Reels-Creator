@@ -84,11 +84,35 @@ $('autoSend').addEventListener('change', async () => {
 });
 
 $('next').addEventListener('click', async () => {
+  // UX fix v1.2.1 — dua jebakan yang bikin klik pertama terasa "tidak bereaksi":
+  //  1) Textarea di popup cuma draf. Content script membaca antrean dari storage,
+  //     bukan dari textarea, jadi Suntik tanpa Simpan = antrean kosong. Sekarang
+  //     Suntik otomatis menyimpan draf dulu bila isinya beda dari antrean tersimpan.
+  //  2) Tab chat yang sudah terbuka SEBELUM extension di-load belum punya content
+  //     script, jadi sendMessage gagal. Sekarang Suntik otomatis mengaktifkan
+  //     content script di tab itu lalu mencoba ulang, tanpa perlu refresh manual.
+  const draft = parseQueue($('queue').value);
+  const stored = await chrome.storage.local.get({ queue: [], index: 0 });
+  const draftChanged = draft.length > 0 && JSON.stringify(draft) !== JSON.stringify(stored.queue);
+  if (draftChanged) {
+    await chrome.storage.local.set({ queue: draft, index: 0 });
+  }
   await chrome.storage.local.set({ autoSend: $('autoSend').checked });
-  const res = await sendToActiveTab({ type: 'rc-inject-next' });
-  await refreshStatus();
+  let res = await sendToActiveTab({ type: 'rc-inject-next' });
   if (!res?.ok) {
-    $('status').textContent += ' Gagal menyuntik: pastikan tab aktif adalah halaman chat dan sudah dimuat penuh, atau klik "Aktifkan di tab ini" dulu, lalu coba lagi.';
+    try {
+      const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+      if (tab?.id) {
+        await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ['content.js'] });
+        await new Promise((r) => setTimeout(r, 400));
+        res = await sendToActiveTab({ type: 'rc-inject-next' });
+      }
+    } catch (_) { /* pesan gagal di bawah tetap tampil */ }
+  }
+  await refreshStatus();
+  if (draftChanged) $('status').textContent += ' Draf antrean otomatis disimpan dulu.';
+  if (!res?.ok) {
+    $('status').textContent += ' Gagal menyuntik: pastikan tab aktif adalah halaman chat dan sudah dimuat penuh, lalu coba lagi (atau refresh tab chat sekali).';
   }
 });
 

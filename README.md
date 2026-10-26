@@ -1,6 +1,6 @@
 # 🎬 Reels-Creator
 
-![Version](https://img.shields.io/badge/version-1.2.0-7c5cff)
+![Version](https://img.shields.io/badge/version-1.2.1-7c5cff)
 ![Manifest](https://img.shields.io/badge/manifest-V3-333333)
 ![Browser](https://img.shields.io/badge/browser-Chrome-4285F4)
 ![Privacy](https://img.shields.io/badge/data-tidak%20dikirim%20ke%20server-2ea043)
@@ -45,7 +45,7 @@ Extension ini dipasang secara manual (Load unpacked), tanpa perlu lewat Chrome W
 
 ### 1. Siapkan antrean prompt
 
-Klik ikon extension, tempel daftar prompt di kolom antrean, lalu klik **Simpan antrean**.
+Klik ikon extension, tempel daftar prompt di kolom antrean, lalu klik **Simpan antrean**. Sejak v1.2.1, klik **Suntik prompt berikutnya** saja juga cukup — draf di textarea otomatis disimpan dulu bila belum tersimpan.
 
 ### 2. Tambahkan gambar referensi (opsional)
 
@@ -182,7 +182,8 @@ Reels-Creator/
 
 | Gejala | Solusi |
 |---|---|
-| Panel tidak muncul di halaman chat | Refresh halaman chat; untuk chat di luar daftar, klik **Aktifkan di tab ini** dari popup |
+| Panel tidak muncul di halaman chat | Refresh halaman chat; untuk chat di luar daftar, klik **Aktifkan di tab ini** dari popup. Sejak v1.2.1, tombol **Suntik** juga otomatis mengaktifkan content script di tab lama lalu mencoba ulang |
+| Klik Suntik terasa tidak bereaksi | Pastikan antrean sudah tersimpan — sejak v1.2.1 draf textarea otomatis disimpan saat Suntik diklik. Bila status menampilkan "Gagal menyuntik", tab chat kemungkinan belum termuat penuh — tunggu sebentar lalu coba lagi |
 | Teks tidak masuk ke kotak chat | Pastikan halaman chat termuat penuh, lalu coba suntik sekali lagi |
 | Gambar referensi tidak terlampir | Cek status di panel: bila tertulis clipboard, tekan **Ctrl+V** di kotak chat; bila gagal total, lampirkan manual lewat tombol 📎 di chat |
 | Gambar diskip saat dipilih | Total gambar melebihi ~8 MB — kompres / perkecil gambar, lalu pilih ulang |
@@ -197,12 +198,18 @@ Reels-Creator/
 - [x] v1.0 — Suntik antrean satu per satu ke `muse.ai`, auto-send opsional
 - [x] v1.1 — Dukungan multi-chat + aktivasi per-tab untuk chat lainnya
 - [x] v1.2 — Gambar referensi `.jpg` / `.png` bersama prompt
+- [x] v1.2.1 — Suntik otomatis menyimpan draf + otomatis mengaktifkan tab lama
 - [ ] v1.3 — Deteksi chat selesai menjawab sebelum prompt berikutnya disuntik
 - [ ] v1.3 — Jeda otomatis antar prompt dan template prompt bawaan
 
 ---
 
 ## 📜 Changelog
+
+### v1.2.1
+
+- Perbaikan UX dari laporan pemakaian nyata: klik **Suntik** kini otomatis menyimpan draf textarea bila belum tersimpan, jadi urutan Simpan → Suntik tidak wajib lagi.
+- Klik **Suntik** kini otomatis mengaktifkan content script di tab chat yang sudah terbuka sebelum extension di-load, lalu mencoba ulang — tidak perlu refresh manual atau klik **Aktifkan di tab ini** dulu.
 
 ### v1.2.0
 
